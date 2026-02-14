@@ -43,3 +43,9 @@ python3 scripts/rename_domain.py --old hacs_template --new my_integration --name
 
 - Icons in the repo root (`icon.png`, `logo.png`, `dark_*`) are for HACS/repo branding.
 - The integration folder also contains its own `icon.png` / `logo.png` for UI compatibility.
+- If your Git credentials/token cannot push workflow files, the workflow lives in `docs/workflows/validate.yml`.
+  Enable it by running:
+
+```bash
+./scripts/enable_ci.sh
+```
