@@ -7,7 +7,7 @@ This template is designed to be renamed and extended.
 1. Rename domain and integration name using the helper script:
 
 ```bash
-python3 scripts/rename_domain.py --old hacs_template --new my_integration --name "My Integration"
+python3 scripts/rename_domain.py --old hacs_template --new my_integration --name "My Integration" --repo yourname/my_integration --codeowner "@yourhandle"
 ```
 
 2. Open your new domain folder:
@@ -28,4 +28,3 @@ python3 scripts/rename_domain.py --old hacs_template --new my_integration --name
 
 - GitHub Actions should pass `Validate` (HACS + hassfest).
 - Home Assistant should discover config flow.
-

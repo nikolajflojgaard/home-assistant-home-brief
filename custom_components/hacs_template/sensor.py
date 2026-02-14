@@ -10,6 +10,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_NAME, DEFAULT_NAME, DOMAIN
 from .coordinator import HacsTemplateCoordinator
+from .entity import device_info_from_entry
 
 
 async def async_setup_entry(
@@ -34,9 +35,9 @@ class CounterSensor(CoordinatorEntity[HacsTemplateCoordinator], SensorEntity):
         name = entry.options.get(CONF_NAME, entry.data.get(CONF_NAME, DEFAULT_NAME))
         self._attr_unique_id = f"{entry.entry_id}_counter"
         self._attr_extra_state_attributes = {"integration_name": name, "entry_id": entry.entry_id}
+        self._attr_device_info = device_info_from_entry(entry)
 
     @property
     def native_value(self) -> int:
         data = self.coordinator.data
         return int(getattr(data, "counter", 0) or 0)
-

@@ -8,8 +8,9 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN, PLATFORMS
+from .const import DOMAIN, ENABLE_FRONTEND, PLATFORMS
 from .coordinator import HacsTemplateCoordinator
+from .frontend import async_register_frontend
 from .services import async_register as async_register_services
 from .websocket_api import async_register as async_register_ws
 
@@ -25,6 +26,9 @@ async def async_setup(hass: HomeAssistant, _config: dict[str, Any]) -> bool:
     if not hass.data[DOMAIN].get("services_registered"):
         await async_register_services(hass)
         hass.data[DOMAIN]["services_registered"] = True
+    if ENABLE_FRONTEND and not hass.data[DOMAIN].get("frontend_registered"):
+        await async_register_frontend(hass)
+        hass.data[DOMAIN]["frontend_registered"] = True
     return True
 
 
@@ -41,6 +45,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate old config entries.
+
+    This is separate from storage migrations (see storage.py). Use it when you
+    change config entry data/options or bump ConfigFlow.VERSION.
+    """
+    if entry.version < 2:
+        data = dict(entry.data)
+        # v1 only had name. v2 adds host/api_key (optional), default to empty.
+        data.setdefault("host", "")
+        data.setdefault("api_key", "")
+        hass.config_entries.async_update_entry(entry, data=data, version=2)
+        _LOGGER.debug("Migrated config entry %s to v2", entry.entry_id)
+
+    return True
+
+
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
@@ -52,4 +73,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handle options update by reloading."""
     await hass.config_entries.async_reload(entry.entry_id)
-
