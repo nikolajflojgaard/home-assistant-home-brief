@@ -1,0 +1,18 @@
+{
+  "domain": "hacs_template",
+  "name": "HACS Template",
+  "codeowners": [
+    "@clawHomeAssistantNiflo"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/clawHomeAssistantNiflo/homeassistant-hacs-template",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/clawHomeAssistantNiflo/homeassistant-hacs-template/issues",
+  "loggers": [
+    "custom_components.hacs_template"
+  ],
+  "requirements": [],
+  "version": "0.1.0"
+}
+

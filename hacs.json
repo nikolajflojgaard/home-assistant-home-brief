@@ -1,0 +1,10 @@
+{
+  "name": "HACS Template Integration",
+  "content_in_root": false,
+  "domains": [
+    "hacs_template"
+  ],
+  "homeassistant": "2024.6.0",
+  "render_readme": true
+}
+

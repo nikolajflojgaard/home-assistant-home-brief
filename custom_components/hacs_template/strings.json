@@ -1,0 +1,32 @@
+{
+  "title": "HACS Template",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up HACS Template",
+        "description": "Example integration template with storage, services, and a sensor.",
+        "data": {
+          "name": "Name"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "data": {
+          "name": "Name"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "counter": {
+        "name": "Counter"
+      }
+    }
+  }
+}
+
