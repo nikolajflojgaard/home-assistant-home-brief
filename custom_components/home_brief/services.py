@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import voluptuous as vol
+
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 
 from .const import DOMAIN
 
 SERVICE_GET_BRIEF = "get_brief"
+
+_GET_BRIEF_SCHEMA = vol.Schema({vol.Required("entry_id"): str})
 
 
 async def async_register(hass: HomeAssistant) -> None:
@@ -28,5 +32,6 @@ async def async_register(hass: HomeAssistant) -> None:
             DOMAIN,
             SERVICE_GET_BRIEF,
             _async_get_brief,
+            schema=_GET_BRIEF_SCHEMA,
             supports_response=SupportsResponse.ONLY,
         )

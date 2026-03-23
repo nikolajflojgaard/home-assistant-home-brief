@@ -25,6 +25,10 @@ def _norm(text: str) -> str:
     return text.lower().replace("_", " ")
 
 
+def _domain(state: State) -> str:
+    return state.entity_id.split(".", 1)[0]
+
+
 def _haystack(state: State) -> str:
     parts = [state.entity_id, state.name or "", str(state.attributes.get("friendly_name", ""))]
     return _norm(" ".join(parts))
@@ -32,7 +36,7 @@ def _haystack(state: State) -> str:
 
 def _find_first(states: Iterable[State], *, domains: tuple[str, ...], include: tuple[str, ...], exclude: tuple[str, ...] = ()) -> str | None:
     for state in states:
-        if state.domain not in domains:
+        if _domain(state) not in domains:
             continue
         hay = _haystack(state)
         if include and not any(token in hay for token in include):
@@ -46,7 +50,7 @@ def _find_first(states: Iterable[State], *, domains: tuple[str, ...], include: t
 def _find_lights(states: Iterable[State]) -> list[str]:
     preferred: list[str] = []
     for state in states:
-        if state.domain != "light":
+        if _domain(state) != "light":
             continue
         hay = _haystack(state)
         if any(token in hay for token in ("kitchen", "living", "stue", "entre", "hall", "gang")):
