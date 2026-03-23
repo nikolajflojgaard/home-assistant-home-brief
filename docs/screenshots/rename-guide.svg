@@ -12,7 +12,7 @@
   <text x="96" y="178" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto" font-size="22" fill="#475569">Use the helper script to rename domain safely</text>
 
   <rect x="96" y="230" width="1008" height="120" rx="16" fill="#0f172a"/>
-  <text x="120" y="275" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono" font-size="22" fill="#e2e8f0">python3 scripts/rename_domain.py --old hacs_template --new my_integration --name "My Integration"</text>
+  <text x="120" y="275" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono" font-size="22" fill="#e2e8f0">python3 scripts/rename_domain.py --old home_brief --new my_integration --name "My Integration"</text>
 
   <g font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto" font-size="22" fill="#0f172a">
     <text x="96" y="410">Then update:</text>

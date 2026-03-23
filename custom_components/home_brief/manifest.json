@@ -1,0 +1,17 @@
+{
+  "domain": "home_brief",
+  "name": "Home Brief",
+  "codeowners": [
+    "@nikolajflojgaard"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/nikolajflojgaard/home-assistant-home-brief",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/nikolajflojgaard/home-assistant-home-brief/issues",
+  "loggers": [
+    "custom_components.home_brief"
+  ],
+  "requirements": [],
+  "version": "0.1.0"
+}

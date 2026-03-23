@@ -1,5 +1,5 @@
 {
-  "name": "Home Assistant HACS Template",
+  "name": "Home Assistant Home Brief",
   "image": "mcr.microsoft.com/devcontainers/python:3.12",
   "postCreateCommand": "pip3 install -r requirements-dev.txt || true",
   "customizations": {

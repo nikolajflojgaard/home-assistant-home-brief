@@ -1,0 +1,62 @@
+{
+  "title": "Home Brief",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Home Brief",
+        "description": "Home Brief will try to prefill likely entities automatically. Review them and adjust if needed.",
+        "data": {
+          "name": "Name",
+          "washer_status_entity": "Washer status entity",
+          "washer_power_entity": "Washer power sensor",
+          "washer_done_threshold": "Washer done threshold (W)",
+          "dryer_status_entity": "Dryer status entity",
+          "dryer_power_entity": "Dryer power sensor",
+          "dryer_done_threshold": "Dryer done threshold (W)",
+          "power_price_entity": "Power price sensor",
+          "solar_power_entity": "Solar power sensor",
+          "home_power_entity": "Home power sensor",
+          "occupancy_entity": "Occupancy entity",
+          "lights": "Lights to watch",
+          "humidity_entity": "Humidity sensor",
+          "humidity_threshold": "Humidity warning threshold",
+          "away_power_threshold": "Away-mode high power threshold (W)"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Home Brief options",
+        "data": {
+          "name": "Name",
+          "washer_status_entity": "Washer status entity",
+          "washer_power_entity": "Washer power sensor",
+          "washer_done_threshold": "Washer done threshold (W)",
+          "dryer_status_entity": "Dryer status entity",
+          "dryer_power_entity": "Dryer power sensor",
+          "dryer_done_threshold": "Dryer done threshold (W)",
+          "power_price_entity": "Power price sensor",
+          "solar_power_entity": "Solar power sensor",
+          "home_power_entity": "Home power sensor",
+          "occupancy_entity": "Occupancy entity",
+          "lights": "Lights to watch",
+          "humidity_entity": "Humidity sensor",
+          "humidity_threshold": "Humidity warning threshold",
+          "away_power_threshold": "Away-mode high power threshold (W)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "summary": {
+        "name": "Summary"
+      },
+      "insight_count": {
+        "name": "Insight count"
+      }
+    }
+  }
+}

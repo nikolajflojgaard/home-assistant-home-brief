@@ -1,106 +1,111 @@
-# Home Assistant HACS Integration Template
+# Home Brief
 
-Opinionated, production-ready template for a HACS-installable Home Assistant custom integration.
+Home Brief is a Home Assistant custom integration that turns a handful of entity states into a plain-English house summary.
 
-![Template Overview](docs/screenshots/overview.svg)
+Instead of staring at dashboards, you get a short brief like:
 
-## What You Get
+- "Power is expensive right now"
+- "Washer has been done for 18 min"
+- "You appear to have solar surplus right now"
+- "Good time to charge the car or run heavy appliances"
+- "Nobody is home, but 3 lights are still on"
+- "House looks calm right now"
 
-- Config flow + options flow (with a realistic reauth example)
-- Coordinator pattern (`DataUpdateCoordinator`) with auth-failure mapping (`ConfigEntryAuthFailed`)
-- Storage "database" (`homeassistant.helpers.storage.Store`) with schema migrations
-- Diagnostics (redacted secrets)
-- Services (response services) + websocket command example
-- DeviceInfo helper for consistent device/entity metadata
-- Release kit (version bump script + tag release workflow template)
-- Local validation script + optional Ruff lint
-- Devcontainer (Codespaces/VS Code) for fast onboarding
-- GitHub templates (issues/PR), Dependabot config
-- Icons/logos in repo root and in `custom_components/<domain>/`
+## What it does
 
-## Architecture (Visual)
+Home Brief watches a small set of entities and creates:
 
-![Architecture](docs/screenshots/architecture.svg)
+- a human-readable summary sensor
+- an insight count sensor
+- a Lovelace card
+- a response service / websocket endpoint for the current brief
 
-```mermaid
-flowchart LR
-  CF["config_flow.py"] --> Entry["config entry"]
-  Entry --> Coord["coordinator.py"]
-  Coord --> API["api.py"]
-  Coord --> Store["storage.py"]
-  Coord --> Entities["sensor.py"]
-  Entry --> Diag["diagnostics.py"]
-  Services["services.py"] --> Store
-  WS["websocket_api.py"] --> Store
+It is intentionally opinionated. The goal is useful signal, not another bloated dashboard.
+
+## Current insight packs
+
+- washer done / washer stale
+- dryer done / dryer stale
+- expensive power now
+- cheap power now
+- solar strong now
+- solar surplus now
+- good time to charge EV or run heavy loads
+- nobody-home + lights-left-on
+- nobody-home + unusual house power draw
+- humidity warning
+
+## Installation
+
+1. Add this repository to HACS as a custom repository.
+2. Install **Home Brief**.
+3. Restart Home Assistant.
+4. Add the integration from **Settings → Devices & Services**.
+5. Review the prefilled entity suggestions and adjust them if needed.
+
+## Auto-discovery
+
+Home Brief will try to prefill likely entities automatically for:
+
+- washer power / status
+- dryer power / status
+- power price
+- solar power
+- home power
+- occupancy
+- humidity
+- a handful of likely lights
+
+This is best-effort only. It is meant to reduce setup friction, not pretend every home is the same.
+
+## Entities created
+
+- `sensor.<name>_summary`
+- `sensor.<name>_insight_count`
+
+The summary sensor exposes useful attributes including:
+
+- `insights`
+- `power_price`
+- `solar_power`
+- `home_power`
+- `humidity`
+- `lights_on`
+- `occupancy_home`
+- `washer_done_minutes`
+- `dryer_done_minutes`
+- `solar_surplus`
+
+## Lovelace card
+
+```yaml
+type: custom:home-brief-card
+entity: sensor.home_brief_summary
+max_items: 5
 ```
 
-## Quick Start
+## Design direction
 
-1. Create a new repo from this template (GitHub: "Use this template").
-2. Choose your integration domain, e.g. `my_integration` (lowercase, underscore).
-3. Rename the template:
+Home Brief should feel like:
 
-```bash
-python3 scripts/rename_domain.py --old hacs_template --new my_integration --name "My Integration" --repo yourname/my_integration --codeowner "@yourhandle"
-```
+- simple
+- clear
+- useful in under 30 seconds
+- opinionated, not over-configured
+- more "house assistant" than dashboard builder
 
-4. Update URLs + ownership in `custom_components/<domain>/manifest.json` and `hacs.json`.
-5. Add repo in HACS (Custom repositories, category `Integration`), install, restart Home Assistant, add integration in Settings.
+## Roadmap
 
-## Repo Layout
+Short-term:
 
-```text
-custom_components/hacs_template/   Integration code (rename this folder)
-docs/                             Extra documentation + workflow templates
-scripts/                          Validation, rename, release helpers
-hacs.json                          HACS metadata
-icon.png / logo.png                Repo branding (HACS)
-custom_components/.../icon.png      Integration branding (HA UI)
-```
+- better auto-discovery heuristics
+- better appliance state handling
+- screenshots / demo GIFs
+- notification packs
+- EV-specific insights
 
-## Local Development
+Potential later:
 
-Optional dependencies:
-
-```bash
-pip3 install -r requirements-dev.txt
-```
-
-Run checks:
-
-```bash
-./scripts/validate.sh
-```
-
-## GitHub Actions Workflows
-
-Some Git credentials/tokens cannot push workflow files under `.github/workflows/` (needs `workflow` scope).
-This repo stores workflow templates in `docs/workflows/`.
-
-Enable workflows locally by copying them into place:
-
-```bash
-./scripts/enable_ci.sh
-```
-
-## Release Flow
-
-1. Bump manifest version + tag:
-
-```bash
-./scripts/release.sh 0.1.1
-git push
-git push --tags
-```
-
-2. If you enabled `docs/workflows/release.yml`, GitHub will create a release from the tag.
-
-## Screenshots
-
-![Rename Guide](docs/screenshots/rename-guide.svg)
-
-## Notes
-
-- Remove host/api_key and reauth if your integration does not need auth.
-- Frontend stub is included but disabled by default. To ship a built card/panel JS artifact, set `ENABLE_FRONTEND=True` in `custom_components/<domain>/const.py` and replace `frontend/hacs-template-card.js`.
-- This template intentionally uses HA-native patterns so contributors see "the Home Assistant way" immediately.
+- daily brief entity
+- public Now page companion
+- shareable house status pages

@@ -2,8 +2,8 @@
 
 ## Integration Won't Load
 
-- Check Home Assistant logs for `custom_components.hacs_template`.
-- Ensure the integration domain folder exists: `custom_components/hacs_template/`.
+- Check Home Assistant logs for `custom_components.home_brief`.
+- Ensure the integration domain folder exists: `custom_components/home_brief/`.
 
 ## Config Flow Missing
 

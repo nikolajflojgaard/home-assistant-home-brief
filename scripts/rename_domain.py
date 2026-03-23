@@ -15,7 +15,7 @@ import re
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
-    p.add_argument("--old", required=True, help="Old domain (e.g. hacs_template)")
+    p.add_argument("--old", required=True, help="Old domain (e.g. home_brief)")
     p.add_argument("--new", required=True, help="New domain (e.g. my_integration)")
     p.add_argument("--name", required=True, help='Integration name (e.g. "My Integration")')
     p.add_argument("--repo", default="", help='Optional GitHub repo "owner/name" to update manifest URLs')
@@ -42,7 +42,7 @@ def main() -> int:
 
     old = args.old.strip()
     new = args.new.strip()
-    old_name = "HACS Template"
+    old_name = "Home Brief"
     new_name = args.name.strip()
     repo = str(args.repo or "").strip()
     codeowner = str(args.codeowner or "").strip()

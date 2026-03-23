@@ -1,0 +1,10 @@
+get_brief:
+  name: Get brief
+  description: Return the current Home Brief summary, insights, and stats.
+  target:
+    entity: []
+  fields:
+    entry_id:
+      required: true
+      selector:
+        text:

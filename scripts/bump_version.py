@@ -18,7 +18,7 @@ def main() -> int:
     if not version or "." not in version:
         raise SystemExit("Invalid --version")
 
-    manifest_path = Path("custom_components/hacs_template/manifest.json")
+    manifest_path = Path("custom_components/home_brief/manifest.json")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest["version"] = version
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")

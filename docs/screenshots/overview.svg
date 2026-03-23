@@ -7,7 +7,7 @@
   </defs>
   <rect width="1200" height="630" fill="url(#bg)"/>
   <rect x="60" y="60" width="1080" height="510" rx="24" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
-  <text x="96" y="130" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto" font-size="42" fill="#0f172a">HACS Template Integration</text>
+  <text x="96" y="130" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto" font-size="42" fill="#0f172a">Home Brief Integration</text>
   <text x="96" y="178" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto" font-size="22" fill="#475569">What you get out of the box</text>
 
   <g font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto" font-size="22" fill="#0f172a">

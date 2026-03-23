@@ -9,7 +9,7 @@ fi
 version="$1"
 
 ./scripts/bump_version.py --version "${version}"
-git add custom_components/hacs_template/manifest.json
+git add custom_components/home_brief/manifest.json
 git commit -m "Release ${version}"
 git tag "v${version}"
 
