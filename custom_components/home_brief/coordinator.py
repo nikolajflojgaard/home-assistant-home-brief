@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import STATE_HOME, STATE_ON
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
@@ -31,13 +32,26 @@ from .const import (
     DEFAULT_HUMIDITY_THRESHOLD,
     DEFAULT_WASHER_DONE_THRESHOLD,
 )
+from .discovery import discover_defaults, summarize_discovery
 from .storage import ApplianceState, HomeBriefStore, StoredState
 
 _LOGGER = logging.getLogger(__name__)
 
-DONE_STATES = {"done", "completed", "complete", "finished"}
+DONE_STATES = {"done", "completed", "complete", "finished", "idle", "clean"}
 RUNNING_STATES = {"running", "on", "washing", "drying", "active"}
-HOME_STATES = {"home", "on", "true", "occupied"}
+HOME_STATES = {STATE_HOME, STATE_ON, "true", "occupied"}
+NOT_HOME_STATES = {"not_home", "away", "off", "false", "clear", "empty", "unoccupied"}
+CONFIGURED_ENTITY_FIELDS: tuple[str, ...] = (
+    CONF_WASHER_STATUS_ENTITY,
+    CONF_WASHER_POWER_ENTITY,
+    CONF_DRYER_STATUS_ENTITY,
+    CONF_DRYER_POWER_ENTITY,
+    CONF_POWER_PRICE_ENTITY,
+    CONF_SOLAR_POWER_ENTITY,
+    CONF_HOME_POWER_ENTITY,
+    CONF_OCCUPANCY_ENTITY,
+    CONF_HUMIDITY_ENTITY,
+)
 
 
 @dataclass(slots=True)
@@ -60,6 +74,18 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
 
     def _get_option(self, key: str, default: Any = None) -> Any:
         return self.entry.options.get(key, self.entry.data.get(key, default))
+
+    def _configured_entities(self) -> list[str]:
+        entities = [
+            entity_id
+            for key in CONFIGURED_ENTITY_FIELDS
+            if (entity_id := self._get_option(key))
+        ]
+        entities.extend(list(self._get_option(CONF_LIGHTS, [])))
+        return entities
+
+    def _missing_entities(self) -> list[str]:
+        return [entity_id for entity_id in self._configured_entities() if self.hass.states.get(entity_id) is None]
 
     def _state(self, entity_id: str | None) -> str | None:
         if not entity_id:
@@ -85,7 +111,11 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         state = self._status_value(entity_id)
         if not state:
             return None
-        return state in HOME_STATES
+        if state in HOME_STATES:
+            return True
+        if state in NOT_HOME_STATES:
+            return False
+        return None
 
     def _done_minutes(self, done_at: str) -> int | None:
         if not done_at:
@@ -95,7 +125,7 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=UTC)
             return max(0, int((datetime.now(UTC) - dt).total_seconds() // 60))
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
     def _update_appliance_state(
@@ -188,7 +218,7 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             scored.append((60, "Cheap power window. Good time to charge the car or run heavy loads."))
 
         is_home = self._is_home(self._get_option(CONF_OCCUPANCY_ENTITY))
-        on_lights = sum(1 for light in list(self._get_option(CONF_LIGHTS, [])) if (self._state(light) or "").lower() == "on")
+        on_lights = sum(1 for light in list(self._get_option(CONF_LIGHTS, [])) if (self._state(light) or "").lower() == STATE_ON)
         if is_home is False and on_lights > 0:
             scored.append((95, f"Nobody is home, but {on_lights} light{'s are' if on_lights != 1 else ' is'} still on."))
 
@@ -199,16 +229,30 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         if humidity is not None and humidity >= float(self._get_option(CONF_HUMIDITY_THRESHOLD, DEFAULT_HUMIDITY_THRESHOLD)):
             scored.append((75, f"Humidity is elevated ({humidity:.0f}%)."))
 
+        missing_entities = self._missing_entities()
+        if missing_entities:
+            scored.append((85, f"{len(missing_entities)} configured Home Brief source entit{'ies are' if len(missing_entities) != 1 else 'y is'} missing."))
+
         if not scored:
             scored.append((10, "House looks calm right now."))
 
         await self.store.async_save_state(StoredState(washer=washer_state, dryer=dryer_state))
 
         scored.sort(key=lambda item: item[0], reverse=True)
-        insights = [text for _, text in scored]
-        summary = insights[0]
+        deduped: list[str] = []
+        seen: set[str] = set()
+        for _, text in scored:
+            if text in seen:
+                continue
+            seen.add(text)
+            deduped.append(text)
+
+        discovery_defaults = discover_defaults(self.hass)
+        discovery_summary = summarize_discovery(discovery_defaults)
+
+        summary = deduped[0]
         stats = {
-            "insight_count": len(insights),
+            "insight_count": len(deduped),
             "power_price": price,
             "solar_power": solar,
             "home_power": home_power,
@@ -224,5 +268,11 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             "dryer_done": dryer_state.done,
             "dryer_done_minutes": dryer_done_minutes,
             "solar_surplus": has_solar_surplus,
+            "configured_entities": len(self._configured_entities()),
+            "missing_entities": missing_entities,
+            "missing_entity_count": len(missing_entities),
+            "discovery_matched_count": discovery_summary["matched_count"],
+            "discovery_lights_count": discovery_summary["lights_count"],
+            "last_build_at": datetime.now(UTC).isoformat(),
         }
-        return BriefData(summary=summary, insights=insights, stats=stats)
+        return BriefData(summary=summary, insights=deduped, stats=stats)

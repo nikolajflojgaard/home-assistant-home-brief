@@ -1,10 +1,13 @@
 {
   "title": "Home Brief",
   "config": {
+    "error": {
+      "no_signals": "Pick at least one source entity or light so Home Brief has something to work with."
+    },
     "step": {
       "user": {
         "title": "Set up Home Brief",
-        "description": "Home Brief will try to prefill likely entities automatically. Review them and adjust if needed.",
+        "description": "Home Brief found {matched} likely source entities and {lights} likely lights. Review the suggestions and adjust them before finishing setup.",
         "data": {
           "name": "Name",
           "washer_status_entity": "Washer status entity",
@@ -26,9 +29,13 @@
     }
   },
   "options": {
+    "error": {
+      "no_signals": "Pick at least one source entity or light so Home Brief has something to work with."
+    },
     "step": {
       "init": {
         "title": "Home Brief options",
+        "description": "Discovery currently matches {matched} likely source entities and {lights} likely lights on this system.",
         "data": {
           "name": "Name",
           "washer_status_entity": "Washer status entity",

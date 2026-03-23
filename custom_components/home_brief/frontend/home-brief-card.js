@@ -1,8 +1,31 @@
 class HomeBriefCard extends HTMLElement {
   setConfig(config) {
     if (!config.entity) throw new Error("You need to define an entity");
-    this._config = config;
+    this._config = {
+      max_items: 5,
+      show_chips: true,
+      show_secondary: true,
+      ...config,
+    };
   }
+
+  connectedCallback() {
+    this.addEventListener('click', this._handleClick);
+    this.style.cursor = 'pointer';
+  }
+
+  disconnectedCallback() {
+    this.removeEventListener('click', this._handleClick);
+  }
+
+  _handleClick = () => {
+    if (!this._config?.entity) return;
+    this.dispatchEvent(new CustomEvent('hass-more-info', {
+      bubbles: true,
+      composed: true,
+      detail: { entityId: this._config.entity },
+    }));
+  };
 
   set hass(hass) {
     this._hass = hass;
@@ -13,10 +36,16 @@ class HomeBriefCard extends HTMLElement {
     return `<span class="chip"><span class="chip-label">${label}</span><span class="chip-value">${value}</span></span>`;
   }
 
+  _formatNumber(value, digits = 0) {
+    const num = Number(value);
+    return Number.isFinite(num) ? num.toFixed(digits) : '—';
+  }
+
   _tone(attrs) {
-    if (attrs.power_price >= 3) return 'warning';
+    if ((attrs.missing_entity_count || 0) > 0) return 'warning';
+    if ((attrs.power_price ?? 0) >= 3) return 'warning';
     if (attrs.washer_done || attrs.dryer_done) return 'accent';
-    if (attrs.solar_power > attrs.home_power && attrs.solar_power > 0) return 'good';
+    if ((attrs.solar_power ?? 0) > (attrs.home_power ?? Infinity) && (attrs.solar_power ?? 0) > 0) return 'good';
     return 'neutral';
   }
 
@@ -42,27 +71,30 @@ class HomeBriefCard extends HTMLElement {
     const chips = [];
 
     if (attrs.power_price !== undefined && attrs.power_price !== null) {
-      chips.push(this._formatChip('Price', Number(attrs.power_price).toFixed(2)));
+      chips.push(this._formatChip('Price', this._formatNumber(attrs.power_price, 2)));
     }
     if (attrs.solar_power !== undefined && attrs.solar_power !== null) {
-      chips.push(this._formatChip('Solar', `${Math.round(attrs.solar_power)} W`));
+      chips.push(this._formatChip('Solar', `${this._formatNumber(attrs.solar_power)} W`));
     }
     if (attrs.home_power !== undefined && attrs.home_power !== null) {
-      chips.push(this._formatChip('Home', `${Math.round(attrs.home_power)} W`));
+      chips.push(this._formatChip('Home', `${this._formatNumber(attrs.home_power)} W`));
     }
     if (attrs.humidity !== undefined && attrs.humidity !== null) {
-      chips.push(this._formatChip('Humidity', `${Math.round(attrs.humidity)}%`));
+      chips.push(this._formatChip('Humidity', `${this._formatNumber(attrs.humidity)}%`));
     }
 
     const secondary = [];
-    if (attrs.washer_done_minutes >= 0 && attrs.washer_done) {
+    if ((attrs.washer_done_minutes ?? -1) >= 0 && attrs.washer_done) {
       secondary.push(`Washer done ${attrs.washer_done_minutes} min ago`);
     }
-    if (attrs.dryer_done_minutes >= 0 && attrs.dryer_done) {
+    if ((attrs.dryer_done_minutes ?? -1) >= 0 && attrs.dryer_done) {
       secondary.push(`Dryer done ${attrs.dryer_done_minutes} min ago`);
     }
-    if (attrs.lights_on > 0 && attrs.occupancy_home === false) {
+    if ((attrs.lights_on ?? 0) > 0 && attrs.occupancy_home === false) {
       secondary.push(`${attrs.lights_on} light${attrs.lights_on === 1 ? '' : 's'} still on`);
+    }
+    if ((attrs.missing_entity_count ?? 0) > 0) {
+      secondary.push(`${attrs.missing_entity_count} source ${attrs.missing_entity_count === 1 ? 'entity is' : 'entities are'} missing`);
     }
 
     root.innerHTML = `
@@ -72,8 +104,8 @@ class HomeBriefCard extends HTMLElement {
           <div class="count">${insights.length} insight${insights.length === 1 ? '' : 's'}</div>
         </div>
         <div class="summary">${stateObj.state}</div>
-        ${secondary.length ? `<div class="secondary">${secondary.join(' · ')}</div>` : ''}
-        ${chips.length ? `<div class="chips">${chips.join('')}</div>` : ''}
+        ${this._config.show_secondary && secondary.length ? `<div class="secondary">${secondary.join(' · ')}</div>` : ''}
+        ${this._config.show_chips && chips.length ? `<div class="chips">${chips.join('')}</div>` : ''}
         ${insights.length ? `
           <div class="section-title">Right now</div>
           <ul class="insights">
@@ -94,6 +126,11 @@ class HomeBriefCard extends HTMLElement {
       ha-card {
         overflow: hidden;
         border-radius: 20px;
+        transition: transform 120ms ease, box-shadow 120ms ease;
+      }
+      ha-card:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--ha-card-box-shadow, 0 2px 8px rgba(0,0,0,0.12));
       }
       .content {
         padding: 18px;
@@ -101,19 +138,11 @@ class HomeBriefCard extends HTMLElement {
           radial-gradient(circle at top right, rgba(255,255,255,0.08), transparent 30%),
           linear-gradient(180deg, rgba(255,255,255,0.02), transparent 35%);
       }
-      .tone-warning {
-        border-top: 3px solid var(--warning-color);
-      }
-      .tone-good {
-        border-top: 3px solid var(--success-color);
-      }
-      .tone-accent {
-        border-top: 3px solid var(--primary-color);
-      }
-      .tone-neutral {
-        border-top: 3px solid var(--divider-color);
-      }
-      .missing { color: var(--error-color); }
+      .tone-warning { border-top: 3px solid var(--warning-color); }
+      .tone-good { border-top: 3px solid var(--success-color); }
+      .tone-accent { border-top: 3px solid var(--primary-color); }
+      .tone-neutral { border-top: 3px solid var(--divider-color); }
+      .missing { color: var(--error-color); padding: 18px; }
       .topline {
         display: flex;
         justify-content: space-between;
@@ -183,9 +212,7 @@ class HomeBriefCard extends HTMLElement {
         letter-spacing: 0.06em;
         font-size: 11px;
       }
-      .chip-value {
-        font-weight: 600;
-      }
+      .chip-value { font-weight: 600; }
     `;
     this.appendChild(style);
   }
@@ -195,7 +222,7 @@ class HomeBriefCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { entity: 'sensor.home_brief_summary', max_items: 5 };
+    return { entity: 'sensor.home_brief_summary', max_items: 5, show_chips: true, show_secondary: true };
   }
 }
 
@@ -205,4 +232,5 @@ window.customCards.push({
   type: 'home-brief-card',
   name: 'Home Brief Card',
   description: 'Shows a human-readable brief for your home.',
+  preview: true,
 });
