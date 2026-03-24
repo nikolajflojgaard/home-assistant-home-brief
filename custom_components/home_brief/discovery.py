@@ -33,6 +33,13 @@ _DISCOVERY_KEYS: tuple[str, ...] = (
     CONF_HUMIDITY_ENTITY,
 )
 
+PREFERRED_TEMPERATURE_ENTITY_IDS: tuple[str, ...] = (
+    "sensor.bad_temperatur",
+)
+PREFERRED_HOUSEHOLD_CHORES_ENTITY_IDS: tuple[str, ...] = (
+    "sensor.household_chores_next_3_tasks",
+)
+
 
 def _norm(text: str) -> str:
     return text.lower().replace("_", " ")
@@ -127,6 +134,14 @@ def _find_best(
 
     ranked.sort(key=lambda item: (-item[0], item[1]))
     return ranked[0][1] if ranked else None
+
+
+def _find_preferred_entity(hass: HomeAssistant, entity_ids: tuple[str, ...]) -> str | None:
+    for entity_id in entity_ids:
+        state = hass.states.get(entity_id)
+        if state is not None and _is_available(state):
+            return entity_id
+    return None
 
 
 def _find_lights(states: Iterable[State]) -> list[str]:
@@ -230,6 +245,10 @@ def discover_defaults(hass: HomeAssistant) -> dict[str, Any]:
 
 def find_temperature_entity(hass: HomeAssistant) -> str | None:
     """Return a best-effort indoor temperature sensor."""
+    preferred = _find_preferred_entity(hass, PREFERRED_TEMPERATURE_ENTITY_IDS)
+    if preferred:
+        return preferred
+
     states = list(hass.states.async_all())
     return _find_best(
         states,
@@ -239,6 +258,21 @@ def find_temperature_entity(hass: HomeAssistant) -> str | None:
         preferred_units=("°c", "c"),
         preferred_device_classes=("temperature",),
         preferred_state_classes=("measurement",),
+    )
+
+
+def find_household_chores_entity(hass: HomeAssistant) -> str | None:
+    """Return a best-effort next chores sensor."""
+    preferred = _find_preferred_entity(hass, PREFERRED_HOUSEHOLD_CHORES_ENTITY_IDS)
+    if preferred:
+        return preferred
+
+    states = list(hass.states.async_all())
+    return _find_best(
+        states,
+        domains=("sensor",),
+        include=("household chores", "chores", "tasks", "todo", "to-do"),
+        exclude=("completed", "done", "history", "count", "overdue", "remaining"),
     )
 
 

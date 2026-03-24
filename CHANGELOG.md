@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.2.0
+
+- Reworked the Lovelace card into a denser briefing layout with a strong primary insight, metric chips, compact status pills, and separate signal / chores panels.
+- Added indoor temperature chips to the card and changed temperature discovery to explicitly prefer `sensor.bad_temperatur` when available.
+- Added Household Chores next-3 support with autodetection that prefers `sensor.household_chores_next_3_tasks`, plus new summary attributes for chores list / count / source entity.
+- Added an explicit `BACKLOG.md` so iteration and next steps are visible in-repo.
+
 ## 0.1.6
 
 - Added automatic indoor temperature insights: below 20°C warns that it is getting cold, above 24°C warns that it is getting hot.

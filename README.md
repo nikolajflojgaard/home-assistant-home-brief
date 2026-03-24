@@ -35,6 +35,9 @@ It is intentionally opinionated. The goal is useful signal, not another bloated 
 - nobody-home + lights-left-on
 - nobody-home + unusual house power draw
 - humidity warning
+- indoor temperature comfort nudges
+- waste pickup reminders
+- household chores next-up summary
 - missing configured source entities
 
 ## Installation
@@ -75,6 +78,9 @@ Discovery is now score-based rather than first-match. It prefers:
 
 Power sensors discovered in either `W` or `kW` are normalized internally before Home Brief evaluates thresholds or surplus logic.
 
+For this real-world setup, indoor temperature discovery now explicitly prefers `sensor.bad_temperatur` when it exists.
+Household chores are also auto-detected with a strong preference for `sensor.household_chores_next_3_tasks`.
+
 That means setup is still best-effort, but much less random.
 
 ## Entities created
@@ -89,6 +95,11 @@ The summary sensor exposes useful attributes including:
 - `solar_power`
 - `home_power`
 - `humidity`
+- `indoor_temperature`
+- `temperature_entity`
+- `household_chores`
+- `household_chores_count`
+- `household_chores_entity`
 - `lights_on`
 - `occupancy_home`
 - `washer_done_minutes`
@@ -103,7 +114,7 @@ The summary sensor exposes useful attributes including:
 ```yaml
 type: custom:home-brief-card
 entity: sensor.home_brief_summary
-max_items: 5
+max_items: 6
 show_chips: true
 show_secondary: true
 ```
@@ -112,8 +123,9 @@ Card behavior:
 
 - opens more-info on click
 - highlights warnings when configured source entities are missing
-- shows compact chips for price / solar / home load / humidity
+- shows compact chips for price / solar / home load / indoor temperature / humidity
 - keeps the top insight visually emphasized
+- renders additional signals and the next household chores in separate compact panels instead of one long stack
 
 ## Diagnostics
 

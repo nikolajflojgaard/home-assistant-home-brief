@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -32,7 +33,13 @@ from .const import (
     DEFAULT_HUMIDITY_THRESHOLD,
     DEFAULT_WASHER_DONE_THRESHOLD,
 )
-from .discovery import discover_defaults, find_temperature_entity, find_waste_entities, summarize_discovery
+from .discovery import (
+    discover_defaults,
+    find_household_chores_entity,
+    find_temperature_entity,
+    find_waste_entities,
+    summarize_discovery,
+)
 from .storage import ApplianceState, HomeBriefStore, StoredState
 
 _LOGGER = logging.getLogger(__name__)
@@ -191,6 +198,51 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             scored.append((46, f"Indoor temperature is on the cool side ({temperature:.1f}°C)."))
         return scored, temperature, entity_id
 
+    def _normalize_text_list(self, value: Any) -> list[str]:
+        if isinstance(value, str):
+            text = value.strip()
+            if not text or text.lower() in {"unknown", "unavailable", "none"}:
+                return []
+            separators = ("\n", " • ", " · ", "|", ";")
+            parts = [text]
+            for separator in separators:
+                if separator in text:
+                    parts = [part.strip(" -•·") for part in text.split(separator)]
+                    break
+            return [part for part in parts if part]
+
+        if isinstance(value, Iterable) and not isinstance(value, (bytes, bytearray, dict)):
+            items: list[str] = []
+            for item in value:
+                text = str(item).strip(" -•·")
+                if text and text.lower() not in {"unknown", "unavailable", "none"}:
+                    items.append(text)
+            return items
+
+        return []
+
+    def _household_chores(self) -> tuple[list[str], str | None]:
+        entity_id = find_household_chores_entity(self.hass)
+        state = self._state_obj(entity_id)
+        if state is None:
+            return [], entity_id
+
+        candidates = [
+            state.attributes.get("tasks"),
+            state.attributes.get("items"),
+            state.attributes.get("next_tasks"),
+            state.attributes.get("next_3_tasks"),
+            state.attributes.get("chores"),
+            state.attributes.get("list"),
+            state.attributes.get("entries"),
+            state.state,
+        ]
+        for candidate in candidates:
+            items = self._normalize_text_list(candidate)
+            if items:
+                return items[:3], entity_id
+        return [], entity_id
+
     def _update_appliance_state(
         self,
         previous: ApplianceState,
@@ -296,6 +348,13 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         scored.extend(temp_scored)
         scored.extend(self._waste_pickup_insights())
 
+        household_chores, chores_entity = self._household_chores()
+        if household_chores:
+            top_task = household_chores[0]
+            extra_count = max(0, len(household_chores) - 1)
+            suffix = f" +{extra_count} more" if extra_count else ""
+            scored.append((68, f"Household chores queued: {top_task}{suffix}."))
+
         missing_entities = self._missing_entities()
         if missing_entities:
             scored.append((85, f"{len(missing_entities)} configured Home Brief source entit{'ies are' if len(missing_entities) != 1 else 'y is'} missing."))
@@ -326,6 +385,9 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             "humidity": humidity,
             "indoor_temperature": indoor_temperature,
             "temperature_entity": temperature_entity,
+            "household_chores": household_chores,
+            "household_chores_count": len(household_chores),
+            "household_chores_entity": chores_entity,
             "lights_on": on_lights,
             "occupancy_home": is_home,
             "washer_power": washer_state.last_power,
