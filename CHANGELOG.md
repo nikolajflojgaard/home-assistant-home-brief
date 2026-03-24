@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.3.0
+
+- Added a persistent discovery layer so Home Brief can keep separate track of discovered defaults versus explicit user selections.
+- Home Brief now re-scans Home Assistant automatically on setup and reload, which also covers options saves because Home Assistant reloads the entry after saving options.
+- Added `home_brief.rescan`, a manual response service for forcing a discovery refresh without reinstalling or poking through the UI.
+- Changed coordinator logic to use discovered entities and lights as fallback when config fields are blank, instead of requiring every useful signal to be pinned up front.
+- Expanded diagnostics and summary stats with discovery metadata, autofill visibility, effective config details, and last discovery scan time.
+- Updated onboarding copy and docs to explain the new self-updating discovery behavior.
+
 ## 0.2.0
 
 - Reworked the Lovelace card into a denser briefing layout with a strong primary insight, metric chips, compact status pills, and separate signal / chores panels.

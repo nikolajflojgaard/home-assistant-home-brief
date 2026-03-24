@@ -21,7 +21,7 @@ from .const import (
     CONF_WASHER_STATUS_ENTITY,
     DOMAIN,
 )
-from .discovery import discover_defaults, summarize_discovery
+from .discovery import discover_defaults, effective_defaults, summarize_discovery
 
 _TO_REDACT = {
     CONF_WASHER_STATUS_ENTITY,
@@ -43,6 +43,8 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     coordinator = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    configured = dict(entry.data)
+    configured.update(entry.options)
     defaults = discover_defaults(hass)
 
     payload: dict[str, Any] = {
@@ -52,9 +54,10 @@ async def async_get_config_entry_diagnostics(
             "version": entry.version,
             "data": async_redact_data(dict(entry.data), _TO_REDACT),
             "options": async_redact_data(dict(entry.options), _TO_REDACT),
+            "effective": async_redact_data(effective_defaults(configured=configured, discovered=defaults), _TO_REDACT),
         },
         "discovery": {
-            "summary": summarize_discovery(defaults),
+            "summary": summarize_discovery(defaults, configured),
             "defaults": async_redact_data(defaults, _TO_REDACT),
         },
     }
@@ -65,7 +68,12 @@ async def async_get_config_entry_diagnostics(
             "last_exception": repr(getattr(coordinator, "last_exception", None)),
             "summary": getattr(getattr(coordinator, "data", None), "summary", None),
             "insights": getattr(getattr(coordinator, "data", None), "insights", None),
-            "stats": async_redact_data(getattr(getattr(coordinator, "data", None), "stats", {}) or {}, {"missing_entities"}),
+            "stats": async_redact_data(getattr(getattr(coordinator, "data", None), "stats", {}) or {}, {"missing_entities", "discovery_defaults", "effective_config"}),
+            "stored_discovery": {
+                "summary": getattr(coordinator, "discovery_summary", {}),
+                "scanned_at": getattr(coordinator, "discovery_scanned_at", ""),
+                "defaults": async_redact_data(getattr(coordinator, "discovery_defaults", {}), _TO_REDACT),
+            },
         }
 
     return payload

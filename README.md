@@ -56,9 +56,32 @@ It is intentionally opinionated. The goal is useful signal, not another bloated 
 2. Restart Home Assistant.
 3. Add **Home Brief** from **Settings → Devices & Services**.
 
-## Onboarding and discovery
+## Self-updating discovery
 
-Home Brief tries to prefill likely entities automatically for:
+Home Brief now keeps a discovery layer separate from explicit user config.
+
+That matters because it lets the integration keep getting smarter without being annoying:
+
+- on initial setup, likely entities and lights are prefilled
+- on integration reload, discovery is re-scanned automatically
+- on options save, the reload re-scans again
+- `home_brief.rescan` lets you manually force discovery at any time
+- explicit user picks still win
+- blank / missing fields can be auto-filled from the latest discovery snapshot
+
+This is deliberate. A separate Home Assistant automation is not needed here. Internal lifecycle hooks plus a manual rescan service are the cleaner design: less setup, fewer moving parts, and no risk of the integration fighting user intent.
+
+### What discovery currently targets
+
+Discovery is score-based rather than first-match. It prefers:
+
+- available entities over unknown/unavailable ones
+- power sensors with `W` / `kW` units and `power` device class
+- humidity sensors with `%` and `humidity` device class
+- names that actually look like washer, dryer, solar, occupancy, or price signals
+- likely high-signal lights for away-mode checks
+
+It currently tries to find useful signals for:
 
 - washer power / status
 - dryer power / status
@@ -67,21 +90,15 @@ Home Brief tries to prefill likely entities automatically for:
 - home power
 - occupancy
 - humidity
-- a handful of likely high-signal lights
-
-Discovery is now score-based rather than first-match. It prefers:
-
-- available entities over unknown/unavailable ones
-- power sensors with `W` / `kW` units and `power` device class
-- humidity sensors with `%` and `humidity` device class
-- names that actually look like washer, dryer, solar, occupancy, or price signals
+- lights
+- indoor temperature
+- waste / affald countdown sensors
+- household chores sensors
 
 Power sensors discovered in either `W` or `kW` are normalized internally before Home Brief evaluates thresholds or surplus logic.
 
-For this real-world setup, indoor temperature discovery now explicitly prefers `sensor.bad_temperatur` when it exists.
+For this real-world setup, indoor temperature discovery explicitly prefers `sensor.bad_temperatur` when it exists.
 Household chores are also auto-detected with a strong preference for `sensor.household_chores_next_3_tasks`.
-
-That means setup is still best-effort, but much less random.
 
 ## Entities created
 
@@ -107,7 +124,34 @@ The summary sensor exposes useful attributes including:
 - `solar_surplus`
 - `missing_entity_count`
 - `missing_entities`
+- `discovery_matched_count`
+- `discovery_matched_fields`
+- `discovery_autofilled_count`
+- `discovery_autofilled_fields`
+- `discovery_lights_count`
+- `discovery_lights_autofilled`
+- `discovery_scanned_at`
 - `last_build_at`
+
+## Services
+
+### Get current brief
+
+```yaml
+service: home_brief.get_brief
+data:
+  entry_id: YOUR_ENTRY_ID
+response_variable: brief
+```
+
+### Force a discovery rescan
+
+```yaml
+service: home_brief.rescan
+data:
+  entry_id: YOUR_ENTRY_ID # optional; omit to rescan all Home Brief entries
+response_variable: result
+```
 
 ## Lovelace card
 
@@ -135,22 +179,12 @@ Use **Settings → Devices & Services → Home Brief → Download diagnostics** 
 Configured entity IDs are redacted. The diagnostics dump includes:
 
 - redacted config and options
-- discovery match summary
+- redacted effective config after discovery fallback is applied
+- discovery match summary and stored discovery snapshot
 - current summary / insights / stats
 - coordinator success state and last exception string
 
-## Service and websocket API
-
-### Service
-
-```yaml
-service: home_brief.get_brief
-data:
-  entry_id: YOUR_ENTRY_ID
-response_variable: brief
-```
-
-### Websocket commands
+## Websocket commands
 
 - `home_brief/list_entries`
 - `home_brief/get_brief`

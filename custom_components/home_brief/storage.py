@@ -11,7 +11,7 @@ from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN
 
-_STORAGE_VERSION = 3
+_STORAGE_VERSION = 4
 
 
 @dataclass(slots=True)
@@ -25,11 +25,21 @@ class ApplianceState:
 
 
 @dataclass(slots=True)
+class DiscoveryState:
+    """Persisted discovery snapshot."""
+
+    defaults: dict[str, Any] = field(default_factory=dict)
+    summary: dict[str, Any] = field(default_factory=dict)
+    scanned_at: str = ""
+
+
+@dataclass(slots=True)
 class StoredState:
     """Stored Home Brief state."""
 
     washer: ApplianceState = field(default_factory=ApplianceState)
     dryer: ApplianceState = field(default_factory=ApplianceState)
+    discovery: DiscoveryState = field(default_factory=DiscoveryState)
     updated_at: str = ""
 
 
@@ -47,11 +57,23 @@ def _appliance_from_raw(raw: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def _discovery_from_raw(raw: dict[str, Any] | None) -> dict[str, Any]:
+    raw = raw or {}
+    defaults = raw.get("defaults") if isinstance(raw.get("defaults"), dict) else {}
+    summary = raw.get("summary") if isinstance(raw.get("summary"), dict) else {}
+    return {
+        "defaults": defaults,
+        "summary": summary,
+        "scanned_at": str(raw.get("scanned_at") or ""),
+    }
+
+
 def _migrate(raw: dict[str, Any]) -> dict[str, Any]:
     return {
-        "schema": 3,
+        "schema": 4,
         "washer": _appliance_from_raw(raw.get("washer") if isinstance(raw, dict) else None),
         "dryer": _appliance_from_raw(raw.get("dryer") if isinstance(raw, dict) else None),
+        "discovery": _discovery_from_raw(raw.get("discovery") if isinstance(raw, dict) else None),
         "updated_at": _now_iso(),
     }
 
@@ -70,19 +92,20 @@ class HomeBriefStore:
                 self._data = {}
 
             schema = int(self._data.get("schema") or 1)
-            if schema < 3:
+            if schema < _STORAGE_VERSION:
                 self._data = _migrate(self._data)
                 await self._store.async_save(self._data)
 
         return StoredState(
             washer=ApplianceState(**_appliance_from_raw(self._data.get("washer"))),
             dryer=ApplianceState(**_appliance_from_raw(self._data.get("dryer"))),
+            discovery=DiscoveryState(**_discovery_from_raw(self._data.get("discovery"))),
             updated_at=str(self._data.get("updated_at") or ""),
         )
 
     async def async_save_state(self, state: StoredState) -> StoredState:
         self._data = {
-            "schema": 3,
+            "schema": _STORAGE_VERSION,
             "washer": {
                 "running": state.washer.running,
                 "done": state.washer.done,
@@ -94,6 +117,11 @@ class HomeBriefStore:
                 "done": state.dryer.done,
                 "done_at": state.dryer.done_at,
                 "last_power": state.dryer.last_power,
+            },
+            "discovery": {
+                "defaults": state.discovery.defaults,
+                "summary": state.discovery.summary,
+                "scanned_at": state.discovery.scanned_at,
             },
             "updated_at": _now_iso(),
         }

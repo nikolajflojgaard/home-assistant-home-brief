@@ -35,12 +35,13 @@ from .const import (
 )
 from .discovery import (
     discover_defaults,
+    effective_defaults,
     find_household_chores_entity,
     find_temperature_entity,
     find_waste_entities,
     summarize_discovery,
 )
-from .storage import ApplianceState, HomeBriefStore, StoredState
+from .storage import ApplianceState, DiscoveryState, HomeBriefStore, StoredState
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -72,6 +73,9 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.entry = entry
         self.store = HomeBriefStore(hass, entry.entry_id)
+        self.discovery_defaults: dict[str, Any] = {}
+        self.discovery_summary: dict[str, Any] = {}
+        self.discovery_scanned_at: str = ""
         super().__init__(
             hass,
             logger=_LOGGER,
@@ -79,16 +83,60 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             update_interval=timedelta(minutes=1),
         )
 
-    def _get_option(self, key: str, default: Any = None) -> Any:
+    def _configured_value(self, key: str, default: Any = None) -> Any:
         return self.entry.options.get(key, self.entry.data.get(key, default))
+
+    def _configured_payload(self) -> dict[str, Any]:
+        payload = dict(self.entry.data)
+        payload.update(self.entry.options)
+        return payload
+
+    def _effective_value(self, key: str, default: Any = None) -> Any:
+        configured = self._configured_value(key)
+        if key == CONF_LIGHTS:
+            if configured:
+                return list(configured)
+            discovered = self.discovery_defaults.get(key)
+            return list(discovered) if discovered else list(default or [])
+
+        if configured not in (None, ""):
+            return configured
+        return self.discovery_defaults.get(key, default)
+
+    async def async_refresh_discovery(self) -> dict[str, Any]:
+        stored = await self.store.async_load()
+        configured = self._configured_payload()
+        defaults = discover_defaults(self.hass)
+        summary = summarize_discovery(defaults, configured)
+        scanned_at = datetime.now(UTC).isoformat()
+        await self.store.async_save_state(
+            StoredState(
+                washer=stored.washer,
+                dryer=stored.dryer,
+                discovery=DiscoveryState(defaults=defaults, summary=summary, scanned_at=scanned_at),
+            )
+        )
+        self.discovery_defaults = defaults
+        self.discovery_summary = summary
+        self.discovery_scanned_at = scanned_at
+        return defaults
+
+    async def async_load_discovery_state(self) -> None:
+        stored = await self.store.async_load()
+        self.discovery_defaults = dict(stored.discovery.defaults)
+        self.discovery_summary = dict(stored.discovery.summary)
+        self.discovery_scanned_at = stored.discovery.scanned_at
+
+    def _effective_config(self) -> dict[str, Any]:
+        return effective_defaults(configured=self._configured_payload(), discovered=self.discovery_defaults)
 
     def _configured_entities(self) -> list[str]:
         entities = [
             entity_id
             for key in CONFIGURED_ENTITY_FIELDS
-            if (entity_id := self._get_option(key))
+            if (entity_id := self._effective_value(key))
         ]
-        entities.extend(list(self._get_option(CONF_LIGHTS, [])))
+        entities.extend(list(self._effective_value(CONF_LIGHTS, [])))
         return entities
 
     def _missing_entities(self) -> list[str]:
@@ -282,19 +330,28 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
 
     async def _async_update_data(self) -> BriefData:
         stored: StoredState = await self.store.async_load()
+        if not self.discovery_defaults:
+            self.discovery_defaults = dict(stored.discovery.defaults)
+            self.discovery_summary = dict(stored.discovery.summary)
+            self.discovery_scanned_at = stored.discovery.scanned_at
+
+        if not self.discovery_defaults:
+            await self.async_refresh_discovery()
+            stored = await self.store.async_load()
+
         scored: list[tuple[int, str]] = []
 
         washer_state, washer_done_minutes = self._update_appliance_state(
             stored.washer,
-            status_entity=self._get_option(CONF_WASHER_STATUS_ENTITY),
-            power_entity=self._get_option(CONF_WASHER_POWER_ENTITY),
-            threshold=float(self._get_option(CONF_WASHER_DONE_THRESHOLD, DEFAULT_WASHER_DONE_THRESHOLD)),
+            status_entity=self._effective_value(CONF_WASHER_STATUS_ENTITY),
+            power_entity=self._effective_value(CONF_WASHER_POWER_ENTITY),
+            threshold=float(self._configured_value(CONF_WASHER_DONE_THRESHOLD, DEFAULT_WASHER_DONE_THRESHOLD)),
         )
         dryer_state, dryer_done_minutes = self._update_appliance_state(
             stored.dryer,
-            status_entity=self._get_option(CONF_DRYER_STATUS_ENTITY),
-            power_entity=self._get_option(CONF_DRYER_POWER_ENTITY),
-            threshold=float(self._get_option(CONF_DRYER_DONE_THRESHOLD, DEFAULT_DRYER_DONE_THRESHOLD)),
+            status_entity=self._effective_value(CONF_DRYER_STATUS_ENTITY),
+            power_entity=self._effective_value(CONF_DRYER_POWER_ENTITY),
+            threshold=float(self._configured_value(CONF_DRYER_DONE_THRESHOLD, DEFAULT_DRYER_DONE_THRESHOLD)),
         )
 
         if washer_state.done:
@@ -309,16 +366,16 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
                 text = f"Dryer has been done for {dryer_done_minutes} min."
             scored.append((90 if (dryer_done_minutes or 0) < 20 else 96, text))
 
-        price = self._float_state(self._get_option(CONF_POWER_PRICE_ENTITY))
+        price = self._float_state(self._effective_value(CONF_POWER_PRICE_ENTITY))
         if price is not None:
             if price >= 3.0:
                 scored.append((100, f"Power is expensive right now ({price:.2f})."))
             elif price <= 1.0:
                 scored.append((65, f"Power is cheap right now ({price:.2f})."))
 
-        solar = self._power_state_watts(self._get_option(CONF_SOLAR_POWER_ENTITY))
-        home_power = self._power_state_watts(self._get_option(CONF_HOME_POWER_ENTITY))
-        away_power_threshold = float(self._get_option(CONF_AWAY_POWER_THRESHOLD, DEFAULT_AWAY_POWER_THRESHOLD))
+        solar = self._power_state_watts(self._effective_value(CONF_SOLAR_POWER_ENTITY))
+        home_power = self._power_state_watts(self._effective_value(CONF_HOME_POWER_ENTITY))
+        away_power_threshold = float(self._configured_value(CONF_AWAY_POWER_THRESHOLD, DEFAULT_AWAY_POWER_THRESHOLD))
 
         if solar is not None and solar >= 1500:
             scored.append((70, f"Solar is strong right now ({solar:.0f} W). Good time to use power."))
@@ -332,16 +389,16 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         elif price is not None and price <= 1.0:
             scored.append((60, "Cheap power window. Good time to charge the car or run heavy loads."))
 
-        is_home = self._is_home(self._get_option(CONF_OCCUPANCY_ENTITY))
-        on_lights = sum(1 for light in list(self._get_option(CONF_LIGHTS, [])) if (self._state(light) or "").lower() == STATE_ON)
+        is_home = self._is_home(self._effective_value(CONF_OCCUPANCY_ENTITY))
+        on_lights = sum(1 for light in list(self._effective_value(CONF_LIGHTS, [])) if (self._state(light) or "").lower() == STATE_ON)
         if is_home is False and on_lights > 0:
             scored.append((95, f"Nobody is home, but {on_lights} light{'s are' if on_lights != 1 else ' is'} still on."))
 
         if is_home is False and home_power is not None and home_power >= away_power_threshold:
             scored.append((92, f"Nobody is home, but the house is still pulling {home_power:.0f} W."))
 
-        humidity = self._float_state(self._get_option(CONF_HUMIDITY_ENTITY))
-        if humidity is not None and humidity >= float(self._get_option(CONF_HUMIDITY_THRESHOLD, DEFAULT_HUMIDITY_THRESHOLD)):
+        humidity = self._float_state(self._effective_value(CONF_HUMIDITY_ENTITY))
+        if humidity is not None and humidity >= float(self._configured_value(CONF_HUMIDITY_THRESHOLD, DEFAULT_HUMIDITY_THRESHOLD)):
             scored.append((75, f"Humidity is elevated ({humidity:.0f}%)."))
 
         temp_scored, indoor_temperature, temperature_entity = self._temperature_insights()
@@ -362,7 +419,17 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         if not scored:
             scored.append((10, "House looks calm right now."))
 
-        await self.store.async_save_state(StoredState(washer=washer_state, dryer=dryer_state))
+        await self.store.async_save_state(
+            StoredState(
+                washer=washer_state,
+                dryer=dryer_state,
+                discovery=DiscoveryState(
+                    defaults=self.discovery_defaults,
+                    summary=self.discovery_summary,
+                    scanned_at=self.discovery_scanned_at,
+                ),
+            )
+        )
 
         scored.sort(key=lambda item: item[0], reverse=True)
         deduped: list[str] = []
@@ -373,9 +440,7 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             seen.add(text)
             deduped.append(text)
 
-        discovery_defaults = discover_defaults(self.hass)
-        discovery_summary = summarize_discovery(discovery_defaults)
-
+        effective_config = self._effective_config()
         summary = deduped[0]
         stats = {
             "insight_count": len(deduped),
@@ -402,8 +467,15 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             "configured_entities": len(self._configured_entities()),
             "missing_entities": missing_entities,
             "missing_entity_count": len(missing_entities),
-            "discovery_matched_count": discovery_summary["matched_count"],
-            "discovery_lights_count": discovery_summary["lights_count"],
+            "discovery_defaults": self.discovery_defaults,
+            "discovery_matched_count": self.discovery_summary.get("matched_count", 0),
+            "discovery_matched_fields": self.discovery_summary.get("matched_fields", []),
+            "discovery_autofilled_count": self.discovery_summary.get("autofilled_count", 0),
+            "discovery_autofilled_fields": self.discovery_summary.get("autofilled_fields", []),
+            "discovery_lights_count": self.discovery_summary.get("lights_count", 0),
+            "discovery_lights_autofilled": self.discovery_summary.get("lights_autofilled", False),
+            "discovery_scanned_at": self.discovery_scanned_at,
+            "effective_config": effective_config,
             "last_build_at": datetime.now(UTC).isoformat(),
         }
         return BriefData(summary=summary, insights=deduped, stats=stats)

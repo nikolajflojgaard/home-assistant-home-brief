@@ -243,6 +243,21 @@ def discover_defaults(hass: HomeAssistant) -> dict[str, Any]:
     }
 
 
+def effective_defaults(*, configured: dict[str, Any] | None = None, discovered: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Merge explicit config with discovered defaults without overwriting user choices."""
+    configured = configured or {}
+    discovered = discovered or {}
+    merged = dict(discovered)
+    for key, value in configured.items():
+        if key == CONF_LIGHTS:
+            if value:
+                merged[key] = list(value)
+            continue
+        if value not in (None, ""):
+            merged[key] = value
+    return merged
+
+
 def find_temperature_entity(hass: HomeAssistant) -> str | None:
     """Return a best-effort indoor temperature sensor."""
     preferred = _find_preferred_entity(hass, PREFERRED_TEMPERATURE_ENTITY_IDS)
@@ -299,11 +314,16 @@ def find_waste_entities(hass: HomeAssistant) -> list[str]:
     return [entity_id for _, entity_id in ranked[:6]]
 
 
-def summarize_discovery(defaults: dict[str, Any]) -> dict[str, Any]:
+def summarize_discovery(defaults: dict[str, Any], configured: dict[str, Any] | None = None) -> dict[str, Any]:
     """Return a small discovery summary suitable for diagnostics."""
+    configured = configured or {}
     matched = [key for key in _DISCOVERY_KEYS if defaults.get(key)]
+    autofilled = [key for key in matched if not configured.get(key)]
     return {
         "matched_count": len(matched),
         "matched_fields": matched,
+        "autofilled_count": len(autofilled),
+        "autofilled_fields": autofilled,
         "lights_count": len(defaults.get(CONF_LIGHTS, [])),
+        "lights_autofilled": bool(defaults.get(CONF_LIGHTS)) and not bool(configured.get(CONF_LIGHTS)),
     }

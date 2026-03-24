@@ -33,7 +33,7 @@ from .const import (
     DEFAULT_WASHER_DONE_THRESHOLD,
     DOMAIN,
 )
-from .discovery import discover_defaults, summarize_discovery
+from .discovery import discover_defaults, effective_defaults, summarize_discovery
 
 _SIGNAL_FIELDS: tuple[str, ...] = (
     CONF_WASHER_STATUS_ENTITY,
@@ -135,11 +135,13 @@ class HomeBriefConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(title=data[CONF_NAME], data=data)
 
-        defaults = discover_defaults(self.hass)
+        discovered = discover_defaults(self.hass)
+        defaults = effective_defaults(configured={CONF_NAME: DEFAULT_NAME}, discovered=discovered)
         defaults[CONF_NAME] = DEFAULT_NAME
-        discovery = summarize_discovery(defaults)
+        discovery = summarize_discovery(discovered, {CONF_NAME: DEFAULT_NAME})
         description_placeholders = {
             "matched": str(discovery["matched_count"]),
+            "autofilled": str(discovery["autofilled_count"]),
             "lights": str(discovery["lights_count"]),
         }
         return self.async_show_form(
@@ -167,12 +169,14 @@ class HomeBriefOptionsFlow(config_entries.OptionsFlow):
             if not errors:
                 return self.async_create_entry(title="", data=data)
 
-        current = discover_defaults(self.hass)
-        current.update(dict(self.config_entry.data))
-        current.update(self.config_entry.options)
-        discovery = summarize_discovery(discover_defaults(self.hass))
+        configured = dict(self.config_entry.data)
+        configured.update(self.config_entry.options)
+        discovered = discover_defaults(self.hass)
+        current = effective_defaults(configured=configured, discovered=discovered)
+        discovery = summarize_discovery(discovered, configured)
         description_placeholders = {
             "matched": str(discovery["matched_count"]),
+            "autofilled": str(discovery["autofilled_count"]),
             "lights": str(discovery["lights_count"]),
         }
         return self.async_show_form(

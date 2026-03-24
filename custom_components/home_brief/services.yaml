@@ -8,3 +8,14 @@ get_brief:
       required: true
       selector:
         text:
+
+rescan:
+  name: Rescan Home Assistant
+  description: Re-run Home Brief discovery so missing fields can pick up newly available entities without overwriting explicit user selections.
+  target:
+    entity: []
+  fields:
+    entry_id:
+      required: false
+      selector:
+        text:

@@ -35,6 +35,8 @@ async def async_setup(hass: HomeAssistant, _config: dict[str, Any]) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up from a config entry."""
     coordinator = HomeBriefCoordinator(hass, entry)
+    await coordinator.async_load_discovery_state()
+    await coordinator.async_refresh_discovery()
     await coordinator.async_config_entry_first_refresh()
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator

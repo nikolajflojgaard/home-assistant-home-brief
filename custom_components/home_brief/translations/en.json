@@ -7,7 +7,7 @@
     "step": {
       "user": {
         "title": "Set up Home Brief",
-        "description": "Home Brief found {matched} likely source entities and {lights} likely lights. Review the suggestions and adjust them before finishing setup.",
+        "description": "Home Brief found {matched} likely source entities and {lights} likely lights. It can auto-fill {autofilled} missing fields without overwriting explicit choices. Review the suggestions and adjust them before finishing setup.",
         "data": {
           "name": "Name",
           "washer_status_entity": "Washer status entity",
@@ -35,7 +35,7 @@
     "step": {
       "init": {
         "title": "Home Brief options",
-        "description": "Discovery currently matches {matched} likely source entities and {lights} likely lights on this system.",
+        "description": "Discovery currently matches {matched} likely source entities and {lights} likely lights. {autofilled} fields can currently be auto-filled from discovery if you leave them blank.",
         "data": {
           "name": "Name",
           "washer_status_entity": "Washer status entity",
