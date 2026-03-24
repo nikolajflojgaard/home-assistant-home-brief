@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -207,8 +208,24 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         except Exception:  # noqa: BLE001
             return None
 
-    def _waste_pickup_insights(self) -> list[tuple[int, str]]:
-        scored: list[tuple[int, str]] = []
+    def _clean_signal_name(self, value: str) -> str:
+        cleaned = str(value or "").strip()
+        for prefix in ("Affalddk Askeåsen 24 ", "Affald – ", "Affald-", "Waste – ", "Waste pickup "):
+            cleaned = cleaned.replace(prefix, "")
+        cleaned = re.sub(r"\s+", " ", cleaned)
+        return cleaned.strip(" -–—")
+
+    def _bucket_waste_days(self, days: int) -> str:
+        if days <= 0:
+            return "today"
+        if days == 1:
+            return "tomorrow"
+        if days == 2:
+            return "soon"
+        return "later"
+
+    def _waste_pickups(self) -> list[dict[str, Any]]:
+        pickups: list[dict[str, Any]] = []
         for entity_id in find_waste_entities(self.hass):
             state = self._state_obj(entity_id)
             if state is None:
@@ -221,15 +238,46 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             except (TypeError, ValueError):
                 continue
 
+            if days > 3:
+                continue
+
             name = str(state.attributes.get("friendly_name") or state.name or entity_id)
-            clean_name = name.replace("Affalddk Askeåsen 24 ", "").replace("Affald – ", "").strip()
-            if days == 0:
-                scored.append((94, f"Waste pickup today: {clean_name}."))
-            elif days == 1:
-                scored.append((88, f"Waste pickup tomorrow: {clean_name}."))
-            elif days == 2:
-                scored.append((72, f"Waste pickup in 2 days: {clean_name}."))
-        return scored
+            clean_name = self._clean_signal_name(name)
+            pickups.append({
+                "entity_id": entity_id,
+                "name": clean_name or entity_id,
+                "days": days,
+                "bucket": self._bucket_waste_days(days),
+            })
+
+        pickups.sort(key=lambda item: (item["days"], item["name"]))
+        return pickups
+
+    def _waste_pickup_summary(self, pickups: list[dict[str, Any]]) -> tuple[int, str] | None:
+        if not pickups:
+            return None
+
+        today = [item["name"] for item in pickups if item["days"] <= 0]
+        tomorrow = [item["name"] for item in pickups if item["days"] == 1]
+        soon = [item["name"] for item in pickups if item["days"] == 2]
+
+        if today:
+            head = ", ".join(today[:2])
+            suffix = f" +{len(today) - 2} more" if len(today) > 2 else ""
+            if tomorrow:
+                return 95, f"Waste pickups today: {head}{suffix}. Tomorrow: {', '.join(tomorrow[:2])}."
+            return 95, f"Waste pickups today: {head}{suffix}."
+
+        if tomorrow:
+            head = ", ".join(tomorrow[:2])
+            suffix = f" +{len(tomorrow) - 2} more" if len(tomorrow) > 2 else ""
+            if soon:
+                return 86, f"Waste pickups tomorrow: {head}{suffix}. {', '.join(soon[:2])} follow in 2 days."
+            return 86, f"Waste pickups tomorrow: {head}{suffix}."
+
+        head = ", ".join(soon[:3])
+        suffix = f" +{len(soon) - 3} more" if len(soon) > 3 else ""
+        return 72, f"Waste pickups coming up in 2 days: {head}{suffix}."
 
     def _temperature_insights(self) -> tuple[list[tuple[int, str]], float | None, str | None]:
         entity_id = find_temperature_entity(self.hass)
@@ -269,11 +317,29 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
 
         return []
 
-    def _household_chores(self) -> tuple[list[str], str | None]:
+    def _chore_priority(self, chore: str, index: int) -> int:
+        text = chore.lower()
+        score = 100 - min(index, 10)
+        urgent_terms = ("overdue", "urgent", "asap", "today", "tonight", "now", "snarest", "i dag", "nu", "hurtigst")
+        soon_terms = ("tomorrow", "this week", "soon", "weekend", "imorgen", "i morgen", "denne uge", "snart")
+        routine_terms = ("sometime", "eventually", "later", "når", "senere")
+
+        if any(term in text for term in urgent_terms):
+            score += 40
+        elif any(term in text for term in soon_terms):
+            score += 18
+        elif any(term in text for term in routine_terms):
+            score -= 8
+
+        if text.startswith(("!", "*")):
+            score += 12
+        return score
+
+    def _household_chores(self) -> tuple[list[str], str | None, str | None]:
         entity_id = find_household_chores_entity(self.hass)
         state = self._state_obj(entity_id)
         if state is None:
-            return [], entity_id
+            return [], entity_id, None
 
         candidates = [
             state.attributes.get("tasks"),
@@ -288,8 +354,21 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         for candidate in candidates:
             items = self._normalize_text_list(candidate)
             if items:
-                return items[:3], entity_id
-        return [], entity_id
+                cleaned = [self._clean_signal_name(item) for item in items]
+                prioritized = sorted(
+                    enumerate(cleaned),
+                    key=lambda item: self._chore_priority(item[1], item[0]),
+                    reverse=True,
+                )
+                chores = [item for _, item in prioritized if item][:5]
+                if not chores:
+                    return [], entity_id, None
+                top_task = chores[0]
+                extra_count = max(0, len(chores) - 1)
+                suffix = f" +{extra_count} more" if extra_count else ""
+                summary = f"Household focus: {top_task}{suffix}."
+                return chores, entity_id, summary
+        return [], entity_id, None
 
     def _update_appliance_state(
         self,
@@ -403,14 +482,15 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
 
         temp_scored, indoor_temperature, temperature_entity = self._temperature_insights()
         scored.extend(temp_scored)
-        scored.extend(self._waste_pickup_insights())
 
-        household_chores, chores_entity = self._household_chores()
-        if household_chores:
-            top_task = household_chores[0]
-            extra_count = max(0, len(household_chores) - 1)
-            suffix = f" +{extra_count} more" if extra_count else ""
-            scored.append((68, f"Household chores queued: {top_task}{suffix}."))
+        waste_pickups = self._waste_pickups()
+        waste_pickup_summary = self._waste_pickup_summary(waste_pickups)
+        if waste_pickup_summary:
+            scored.append(waste_pickup_summary)
+
+        household_chores, chores_entity, chores_summary = self._household_chores()
+        if chores_summary:
+            scored.append((74, chores_summary))
 
         missing_entities = self._missing_entities()
         if missing_entities:
@@ -453,6 +533,10 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             "household_chores": household_chores,
             "household_chores_count": len(household_chores),
             "household_chores_entity": chores_entity,
+            "household_chores_summary": chores_summary,
+            "waste_pickups": waste_pickups,
+            "waste_pickup_count": len(waste_pickups),
+            "waste_pickup_summary": waste_pickup_summary[1] if waste_pickup_summary else None,
             "lights_on": on_lights,
             "occupancy_home": is_home,
             "washer_power": washer_state.last_power,

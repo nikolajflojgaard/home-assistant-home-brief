@@ -36,8 +36,8 @@ It is intentionally opinionated. The goal is useful signal, not another bloated 
 - nobody-home + unusual house power draw
 - humidity warning
 - indoor temperature comfort nudges
-- waste pickup reminders
-- household chores next-up summary
+- grouped waste / recycling reminders with timeline metadata
+- prioritized household chores next-up summary
 - missing configured source entities
 
 ## Installation
@@ -117,6 +117,10 @@ The summary sensor exposes useful attributes including:
 - `household_chores`
 - `household_chores_count`
 - `household_chores_entity`
+- `household_chores_summary`
+- `waste_pickups`
+- `waste_pickup_count`
+- `waste_pickup_summary`
 - `lights_on`
 - `occupancy_home`
 - `washer_done_minutes`
@@ -169,7 +173,8 @@ Card behavior:
 - highlights warnings when configured source entities are missing
 - shows compact chips for price / solar / home load / indoor temperature / humidity
 - keeps the top insight visually emphasized
-- renders additional signals and the next household chores in separate compact panels instead of one long stack
+- groups upcoming chores and waste pickups into a dedicated agenda area instead of mixing them into the raw signal feed
+- renders remaining insights as a separate signal stack so the card stays useful when the house is noisy
 
 ## Diagnostics
 

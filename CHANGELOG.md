@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.3.1
+
+- Reworked household chores handling so chore lists are cleaned, lightly prioritized, and exposed with a clearer `household_chores_summary` attribute.
+- Grouped waste / affald countdown sensors into a single higher-signal summary plus structured `waste_pickups` metadata for timeline-style rendering.
+- Refined the Lovelace card UX with a dedicated agenda area for upcoming chores and waste pickups, while keeping the rest of the house state in a separate signals stack.
+- Kept auto-discovery unchanged while expanding user-visible polish and sensor attributes.
+
 ## 0.3.0
 
 - Added a persistent discovery layer so Home Brief can keep separate track of discovered defaults versus explicit user selections.
