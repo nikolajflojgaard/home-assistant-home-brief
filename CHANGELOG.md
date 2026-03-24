@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.3
+
+- Fixed a real-world unit handling bug where discovered `kW` power sensors were treated like watts, which could break appliance done detection, solar surplus insights, and away-load warnings.
+- Clarified install and troubleshooting docs around score-based discovery and internal `W` / `kW` normalization.
+
 ## 0.1.2
 
 - Improved config-flow onboarding with better descriptions, units, and basic validation.

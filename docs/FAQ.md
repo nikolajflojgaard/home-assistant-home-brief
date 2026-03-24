@@ -14,7 +14,7 @@ Because manual setup is where good integrations usually die. Home Brief uses dis
 
 ## Is discovery perfect?
 
-No. It is score-based and much better than a naive first-match lookup, but every Home Assistant install is different.
+No. It is score-based and much better than a naive first-match lookup, and it correctly handles discovered power sensors reported in either `W` or `kW`, but every Home Assistant install is different.
 
 ## Do I need all fields configured?
 

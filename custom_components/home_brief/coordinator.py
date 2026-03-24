@@ -87,10 +87,13 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
     def _missing_entities(self) -> list[str]:
         return [entity_id for entity_id in self._configured_entities() if self.hass.states.get(entity_id) is None]
 
-    def _state(self, entity_id: str | None) -> str | None:
+    def _state_obj(self, entity_id: str | None):
         if not entity_id:
             return None
-        state = self.hass.states.get(entity_id)
+        return self.hass.states.get(entity_id)
+
+    def _state(self, entity_id: str | None) -> str | None:
+        state = self._state_obj(entity_id)
         if state is None:
             return None
         return state.state
@@ -103,6 +106,27 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             return float(raw)
         except (TypeError, ValueError):
             return None
+
+    def _power_state_watts(self, entity_id: str | None) -> float | None:
+        state = self._state_obj(entity_id)
+        if state is None:
+            return None
+
+        raw = state.state
+        if raw in (None, "unknown", "unavailable", "none", ""):
+            return None
+
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            return None
+
+        unit = str(state.attributes.get("unit_of_measurement", "")).strip().lower()
+        if unit == "kw":
+            return value * 1000
+        if unit in {"w", ""}:
+            return value
+        return value
 
     def _status_value(self, entity_id: str | None) -> str:
         return (self._state(entity_id) or "").strip().lower()
@@ -137,7 +161,7 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         threshold: float,
     ) -> tuple[ApplianceState, int | None]:
         status = self._status_value(status_entity)
-        power = self._float_state(power_entity)
+        power = self._power_state_watts(power_entity)
 
         running = previous.running
         done = previous.done
@@ -201,8 +225,8 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             elif price <= 1.0:
                 scored.append((65, f"Power is cheap right now ({price:.2f})."))
 
-        solar = self._float_state(self._get_option(CONF_SOLAR_POWER_ENTITY))
-        home_power = self._float_state(self._get_option(CONF_HOME_POWER_ENTITY))
+        solar = self._power_state_watts(self._get_option(CONF_SOLAR_POWER_ENTITY))
+        home_power = self._power_state_watts(self._get_option(CONF_HOME_POWER_ENTITY))
         away_power_threshold = float(self._get_option(CONF_AWAY_POWER_THRESHOLD, DEFAULT_AWAY_POWER_THRESHOLD))
 
         if solar is not None and solar >= 1500:

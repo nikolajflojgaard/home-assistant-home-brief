@@ -73,6 +73,8 @@ Discovery is now score-based rather than first-match. It prefers:
 - humidity sensors with `%` and `humidity` device class
 - names that actually look like washer, dryer, solar, occupancy, or price signals
 
+Power sensors discovered in either `W` or `kW` are normalized internally before Home Brief evaluates thresholds or surplus logic.
+
 That means setup is still best-effort, but much less random.
 
 ## Entities created

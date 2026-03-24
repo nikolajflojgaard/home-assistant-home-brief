@@ -8,7 +8,7 @@
 
 ## Config flow shows weak or wrong suggestions
 
-Discovery is heuristic-based. It now prefers available entities and sensible units / device classes, but it is still best-effort.
+Discovery is heuristic-based. It now prefers available entities and sensible units / device classes, and power sensors in either `W` or `kW` are handled correctly at runtime, but it is still best-effort.
 
 If suggestions are wrong:
 
