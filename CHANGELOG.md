@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.4
+
+- Fixed config-flow handling for optional entity selectors so blank occupancy / humidity fields no longer break setup with `Entity None is neither a valid entity ID nor a valid UUID`.
+- Fixed dev dependency constraints so the repo no longer points at a non-existent `pytest-homeassistant-custom-component>=0.13.0` release.
+
 ## 0.1.3
 
 - Fixed a real-world unit handling bug where discovered `kW` power sensors were treated like watts, which could break appliance done detection, solar surplus insights, and away-load warnings.
