@@ -228,6 +228,43 @@ def discover_defaults(hass: HomeAssistant) -> dict[str, Any]:
     }
 
 
+def find_temperature_entity(hass: HomeAssistant) -> str | None:
+    """Return a best-effort indoor temperature sensor."""
+    states = list(hass.states.async_all())
+    return _find_best(
+        states,
+        domains=("sensor",),
+        include=("temperature", "temperatur", "temp"),
+        exclude=("outside", "outdoor", "weather", "forecast", "tesla", "car", "battery", "charger"),
+        preferred_units=("°c", "c"),
+        preferred_device_classes=("temperature",),
+        preferred_state_classes=("measurement",),
+    )
+
+
+def find_waste_entities(hass: HomeAssistant) -> list[str]:
+    """Return best-effort waste pickup countdown sensors."""
+    states = list(hass.states.async_all())
+    ranked: list[tuple[int, str]] = []
+    for state in states:
+        score = _score_entity(
+            state,
+            domains=("sensor",),
+            include=("affald", "affalddk", "waste", "garbage", "trash", "recycling", "pickup", "afhentning"),
+            exclude=("update", "line", "linje", "next in queue", "næst", "relevant"),
+            preferred_units=("dage", "days"),
+        )
+        if score is None:
+            continue
+        unit = str(state.attributes.get("unit_of_measurement", "")).lower()
+        if unit in {"dage", "days"}:
+            score += 20
+        ranked.append((score, state.entity_id))
+
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+    return [entity_id for _, entity_id in ranked[:6]]
+
+
 def summarize_discovery(defaults: dict[str, Any]) -> dict[str, Any]:
     """Return a small discovery summary suitable for diagnostics."""
     matched = [key for key in _DISCOVERY_KEYS if defaults.get(key)]

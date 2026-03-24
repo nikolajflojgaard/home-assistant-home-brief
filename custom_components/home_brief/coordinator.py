@@ -32,7 +32,7 @@ from .const import (
     DEFAULT_HUMIDITY_THRESHOLD,
     DEFAULT_WASHER_DONE_THRESHOLD,
 )
-from .discovery import discover_defaults, summarize_discovery
+from .discovery import discover_defaults, find_temperature_entity, find_waste_entities, summarize_discovery
 from .storage import ApplianceState, HomeBriefStore, StoredState
 
 _LOGGER = logging.getLogger(__name__)
@@ -152,6 +152,45 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         except Exception:  # noqa: BLE001
             return None
 
+    def _waste_pickup_insights(self) -> list[tuple[int, str]]:
+        scored: list[tuple[int, str]] = []
+        for entity_id in find_waste_entities(self.hass):
+            state = self._state_obj(entity_id)
+            if state is None:
+                continue
+            raw = state.state
+            if raw in (None, "unknown", "unavailable", "none", ""):
+                continue
+            try:
+                days = int(float(raw))
+            except (TypeError, ValueError):
+                continue
+
+            name = str(state.attributes.get("friendly_name") or state.name or entity_id)
+            clean_name = name.replace("Affalddk Askeåsen 24 ", "").replace("Affald – ", "").strip()
+            if days == 0:
+                scored.append((94, f"Waste pickup today: {clean_name}."))
+            elif days == 1:
+                scored.append((88, f"Waste pickup tomorrow: {clean_name}."))
+            elif days == 2:
+                scored.append((72, f"Waste pickup in 2 days: {clean_name}."))
+        return scored
+
+    def _temperature_insights(self) -> tuple[list[tuple[int, str]], float | None, str | None]:
+        entity_id = find_temperature_entity(self.hass)
+        temperature = self._float_state(entity_id)
+        scored: list[tuple[int, str]] = []
+        if temperature is None:
+            return scored, None, entity_id
+
+        if temperature < 20:
+            scored.append((82, f"It is getting cold inside ({temperature:.1f}°C). Might be time to turn on the furnace."))
+        elif temperature > 24:
+            scored.append((82, f"It is getting hot inside ({temperature:.1f}°C). Might be time to turn on the fans."))
+        elif temperature < 21:
+            scored.append((46, f"Indoor temperature is on the cool side ({temperature:.1f}°C)."))
+        return scored, temperature, entity_id
+
     def _update_appliance_state(
         self,
         previous: ApplianceState,
@@ -253,6 +292,10 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         if humidity is not None and humidity >= float(self._get_option(CONF_HUMIDITY_THRESHOLD, DEFAULT_HUMIDITY_THRESHOLD)):
             scored.append((75, f"Humidity is elevated ({humidity:.0f}%)."))
 
+        temp_scored, indoor_temperature, temperature_entity = self._temperature_insights()
+        scored.extend(temp_scored)
+        scored.extend(self._waste_pickup_insights())
+
         missing_entities = self._missing_entities()
         if missing_entities:
             scored.append((85, f"{len(missing_entities)} configured Home Brief source entit{'ies are' if len(missing_entities) != 1 else 'y is'} missing."))
@@ -281,6 +324,8 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             "solar_power": solar,
             "home_power": home_power,
             "humidity": humidity,
+            "indoor_temperature": indoor_temperature,
+            "temperature_entity": temperature_entity,
             "lights_on": on_lights,
             "occupancy_home": is_home,
             "washer_power": washer_state.last_power,

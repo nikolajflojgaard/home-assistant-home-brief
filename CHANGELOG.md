@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.6
+
+- Added automatic indoor temperature insights: below 20°C warns that it is getting cold, above 24°C warns that it is getting hot.
+- Added automatic waste pickup insights for today / tomorrow / in 2 days using detected AffaldDK-style countdown sensors.
+- Improved signal density so the brief can surface more than just solar surplus when your home exposes richer entities.
+
 ## 0.1.5
 
 - Replaced the placeholder brand assets with a cleaner Home Brief icon/logo set for HACS and Home Assistant surfaces.
