@@ -48,6 +48,13 @@ _SIGNAL_FIELDS: tuple[str, ...] = (
 )
 
 
+def _optional_with_default(key: str, defaults: dict[str, Any]) -> Any:
+    value = defaults.get(key)
+    if value is None:
+        return vol.Optional(key)
+    return vol.Optional(key, default=value)
+
+
 def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     defaults = defaults or {}
     return vol.Schema(
@@ -55,37 +62,37 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             vol.Required(CONF_NAME, default=defaults.get(CONF_NAME, DEFAULT_NAME)): selector.TextSelector(
                 selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
             ),
-            vol.Optional(CONF_WASHER_STATUS_ENTITY, default=defaults.get(CONF_WASHER_STATUS_ENTITY)): selector.EntitySelector(
+            _optional_with_default(CONF_WASHER_STATUS_ENTITY, defaults): selector.EntitySelector(
                 selector.EntitySelectorConfig(multiple=False)
             ),
-            vol.Optional(CONF_WASHER_POWER_ENTITY, default=defaults.get(CONF_WASHER_POWER_ENTITY)): selector.EntitySelector(
+            _optional_with_default(CONF_WASHER_POWER_ENTITY, defaults): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", multiple=False)
             ),
             vol.Optional(CONF_WASHER_DONE_THRESHOLD, default=defaults.get(CONF_WASHER_DONE_THRESHOLD, DEFAULT_WASHER_DONE_THRESHOLD)): selector.NumberSelector(
                 selector.NumberSelectorConfig(min=0, max=50, mode=selector.NumberSelectorMode.BOX, unit_of_measurement="W")
             ),
-            vol.Optional(CONF_DRYER_STATUS_ENTITY, default=defaults.get(CONF_DRYER_STATUS_ENTITY)): selector.EntitySelector(
+            _optional_with_default(CONF_DRYER_STATUS_ENTITY, defaults): selector.EntitySelector(
                 selector.EntitySelectorConfig(multiple=False)
             ),
-            vol.Optional(CONF_DRYER_POWER_ENTITY, default=defaults.get(CONF_DRYER_POWER_ENTITY)): selector.EntitySelector(
+            _optional_with_default(CONF_DRYER_POWER_ENTITY, defaults): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", multiple=False)
             ),
             vol.Optional(CONF_DRYER_DONE_THRESHOLD, default=defaults.get(CONF_DRYER_DONE_THRESHOLD, DEFAULT_DRYER_DONE_THRESHOLD)): selector.NumberSelector(
                 selector.NumberSelectorConfig(min=0, max=50, mode=selector.NumberSelectorMode.BOX, unit_of_measurement="W")
             ),
-            vol.Optional(CONF_POWER_PRICE_ENTITY, default=defaults.get(CONF_POWER_PRICE_ENTITY)): selector.EntitySelector(
+            _optional_with_default(CONF_POWER_PRICE_ENTITY, defaults): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", multiple=False)
             ),
-            vol.Optional(CONF_SOLAR_POWER_ENTITY, default=defaults.get(CONF_SOLAR_POWER_ENTITY)): selector.EntitySelector(
+            _optional_with_default(CONF_SOLAR_POWER_ENTITY, defaults): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", multiple=False)
             ),
-            vol.Optional(CONF_HOME_POWER_ENTITY, default=defaults.get(CONF_HOME_POWER_ENTITY)): selector.EntitySelector(
+            _optional_with_default(CONF_HOME_POWER_ENTITY, defaults): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", multiple=False)
             ),
-            vol.Optional(CONF_OCCUPANCY_ENTITY, default=defaults.get(CONF_OCCUPANCY_ENTITY)): selector.EntitySelector(
+            _optional_with_default(CONF_OCCUPANCY_ENTITY, defaults): selector.EntitySelector(
                 selector.EntitySelectorConfig(multiple=False)
             ),
-            vol.Optional(CONF_HUMIDITY_ENTITY, default=defaults.get(CONF_HUMIDITY_ENTITY)): selector.EntitySelector(
+            _optional_with_default(CONF_HUMIDITY_ENTITY, defaults): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", multiple=False)
             ),
             vol.Optional(CONF_LIGHTS, default=defaults.get(CONF_LIGHTS, [])): selector.EntitySelector(
