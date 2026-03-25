@@ -75,6 +75,9 @@ class HomeBriefCard extends HTMLElement {
     if (attrs.indoor_temperature !== undefined && attrs.indoor_temperature !== null) {
       chips.push(this._formatChip('Inside', `${this._formatNumber(attrs.indoor_temperature, 1)}°C`));
     }
+    if (attrs.weather_temperature !== undefined && attrs.weather_temperature !== null) {
+      chips.push(this._formatChip('Outside', `${this._formatNumber(attrs.weather_temperature, 1)}°C`));
+    }
     if (attrs.humidity !== undefined && attrs.humidity !== null) {
       const tone = (attrs.humidity ?? 0) >= 70 ? 'warning' : 'neutral';
       chips.push(this._formatChip('Humidity', `${this._formatNumber(attrs.humidity)}%`, tone));
@@ -100,6 +103,9 @@ class HomeBriefCard extends HTMLElement {
     }
     if ((attrs.waste_pickup_count ?? 0) > 0) {
       pills.push(`<span class="pill pill-accent">${attrs.waste_pickup_count} waste pickup${attrs.waste_pickup_count === 1 ? '' : 's'} soon</span>`);
+    }
+    if ((attrs.source_autofilled_count ?? 0) > 0) {
+      pills.push(`<span class="pill">${attrs.source_autofilled_count} auto-filled source${attrs.source_autofilled_count === 1 ? '' : 's'}</span>`);
     }
     if ((attrs.missing_entity_count ?? 0) > 0) {
       pills.push(`<span class="pill pill-warning">${attrs.missing_entity_count} source ${attrs.missing_entity_count === 1 ? 'entity' : 'entities'} missing</span>`);
@@ -149,6 +155,24 @@ class HomeBriefCard extends HTMLElement {
               <span>${this._escapeHtml(item)}</span>
             </li>
           `).join('')}
+        </ul>
+      </section>
+    `;
+  }
+
+  _sourcePanel(attrs) {
+    const sources = Array.isArray(attrs.source_summary) ? attrs.source_summary : [];
+    if (!sources.length) return '';
+
+    return `
+      <section class="panel panel-sources">
+        <div class="section-title">Sources</div>
+        <div class="sources-meta">
+          <span>${attrs.source_explicit_count ?? 0} explicit</span>
+          <span>${attrs.source_autofilled_count ?? 0} auto-filled</span>
+        </div>
+        <ul class="source-list">
+          ${sources.slice(0, 6).map((item) => `<li>${this._escapeHtml(item)}</li>`).join('')}
         </ul>
       </section>
     `;
@@ -231,6 +255,8 @@ class HomeBriefCard extends HTMLElement {
             </section>
           ` : ''}
         </div>
+
+        ${this._sourcePanel(attrs)}
       </div>
     `;
 
@@ -363,6 +389,9 @@ class HomeBriefCard extends HTMLElement {
         padding: 0;
         background: transparent;
       }
+      .panel-sources {
+        margin-top: 12px;
+      }
       .panel-signals .insights { gap: 8px; }
       .section-title {
         font-size: 12px;
@@ -448,6 +477,22 @@ class HomeBriefCard extends HTMLElement {
       }
       .agenda-badge-accent {
         background: color-mix(in srgb, var(--primary-color) 13%, var(--card-background-color));
+      }
+      .sources-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        color: var(--secondary-text-color);
+        font-size: 12px;
+        margin-bottom: 8px;
+      }
+      .source-list {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--secondary-text-color);
+        display: grid;
+        gap: 4px;
+        font-size: 12px;
       }
       @media (max-width: 700px) {
         .grid.with-agenda {

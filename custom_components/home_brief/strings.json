@@ -22,6 +22,7 @@
           "occupancy_entity": "Occupancy entity",
           "lights": "Lights to watch",
           "humidity_entity": "Humidity sensor",
+          "weather_entity": "Weather entity",
           "humidity_threshold": "Humidity warning threshold",
           "away_power_threshold": "Away-mode high power threshold (W)"
         }
@@ -50,6 +51,7 @@
           "occupancy_entity": "Occupancy entity",
           "lights": "Lights to watch",
           "humidity_entity": "Humidity sensor",
+          "weather_entity": "Weather entity",
           "humidity_threshold": "Humidity warning threshold",
           "away_power_threshold": "Away-mode high power threshold (W)"
         }

@@ -23,6 +23,7 @@ CONF_LIGHTS = "lights"
 CONF_HUMIDITY_ENTITY = "humidity_entity"
 CONF_HUMIDITY_THRESHOLD = "humidity_threshold"
 CONF_AWAY_POWER_THRESHOLD = "away_power_threshold"
+CONF_WEATHER_ENTITY = "weather_entity"
 
 DEFAULT_NAME = "Home Brief"
 DEFAULT_HUMIDITY_THRESHOLD = 70

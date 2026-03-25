@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4.0
+
+- Added auto-discovered weather support so Home Brief can surface practical outside-condition and near-term forecast nudges without extra setup in typical Home Assistant installs.
+- Exposed weather and source-attribution metadata on the summary sensor, including which signals are explicitly pinned versus auto-filled from discovery.
+- Updated the Lovelace card with an outdoor temperature chip and a compact sources panel so installability stays simple while troubleshooting gets much clearer.
+
 ## 0.3.1
 
 - Reworked household chores handling so chore lists are cleaned, lightly prioritized, and exposed with a clearer `household_chores_summary` attribute.

@@ -12,3 +12,6 @@ flowchart LR
   Entry --> Diagnostics["diagnostics.py (redacted)"]
 ```
 
+
+
+Discovery now feeds both runtime fallback and source attribution, so the coordinator can explain not just *what* it inferred but also *where each signal came from*.

@@ -38,6 +38,7 @@ It is intentionally opinionated. The goal is useful signal, not another bloated 
 - indoor temperature comfort nudges
 - grouped waste / recycling reminders with timeline metadata
 - prioritized household chores next-up summary
+- weather-aware leave-home and ventilation hints from auto-discovered weather entities
 - missing configured source entities
 
 ## Installation
@@ -90,6 +91,7 @@ It currently tries to find useful signals for:
 - home power
 - occupancy
 - humidity
+- weather
 - lights
 - indoor temperature
 - waste / affald countdown sensors
@@ -118,6 +120,14 @@ The summary sensor exposes useful attributes including:
 - `household_chores_count`
 - `household_chores_entity`
 - `household_chores_summary`
+- `weather_entity`
+- `weather_state`
+- `weather_temperature`
+- `weather_forecast_summary`
+- `source_details`
+- `source_summary`
+- `source_explicit_count`
+- `source_autofilled_count`
 - `waste_pickups`
 - `waste_pickup_count`
 - `waste_pickup_summary`
@@ -171,7 +181,7 @@ Card behavior:
 
 - opens more-info on click
 - highlights warnings when configured source entities are missing
-- shows compact chips for price / solar / home load / indoor temperature / humidity
+- shows compact chips for price / solar / home load / indoor temperature / outdoor temperature / humidity
 - keeps the top insight visually emphasized
 - groups upcoming chores and waste pickups into a dedicated agenda area instead of mixing them into the raw signal feed
 - renders remaining insights as a separate signal stack so the card stays useful when the house is noisy

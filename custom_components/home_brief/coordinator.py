@@ -29,6 +29,7 @@ from .const import (
     CONF_WASHER_DONE_THRESHOLD,
     CONF_WASHER_POWER_ENTITY,
     CONF_WASHER_STATUS_ENTITY,
+    CONF_WEATHER_ENTITY,
     DEFAULT_AWAY_POWER_THRESHOLD,
     DEFAULT_DRYER_DONE_THRESHOLD,
     DEFAULT_HUMIDITY_THRESHOLD,
@@ -60,7 +61,38 @@ CONFIGURED_ENTITY_FIELDS: tuple[str, ...] = (
     CONF_HOME_POWER_ENTITY,
     CONF_OCCUPANCY_ENTITY,
     CONF_HUMIDITY_ENTITY,
+    CONF_WEATHER_ENTITY,
 )
+
+WEATHER_LABELS = {
+    CONF_POWER_PRICE_ENTITY: "Power price",
+    CONF_SOLAR_POWER_ENTITY: "Solar",
+    CONF_HOME_POWER_ENTITY: "Home power",
+    CONF_OCCUPANCY_ENTITY: "Occupancy",
+    CONF_HUMIDITY_ENTITY: "Humidity",
+    CONF_WEATHER_ENTITY: "Weather",
+    CONF_WASHER_STATUS_ENTITY: "Washer status",
+    CONF_WASHER_POWER_ENTITY: "Washer power",
+    CONF_DRYER_STATUS_ENTITY: "Dryer status",
+    CONF_DRYER_POWER_ENTITY: "Dryer power",
+}
+
+WEATHER_FRIENDLY_STATES = {
+    "clear-night": "clear night",
+    "exceptional": "rough weather",
+    "fog": "fog",
+    "hail": "hail",
+    "lightning": "lightning",
+    "lightning-rainy": "thunderstorms",
+    "partlycloudy": "partly cloudy",
+    "pouring": "heavy rain",
+    "rainy": "rain",
+    "snowy": "snow",
+    "snowy-rainy": "sleet",
+    "sunny": "sun",
+    "windy": "wind",
+    "windy-variant": "wind",
+}
 
 
 @dataclass(slots=True)
@@ -370,6 +402,143 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
                 return chores, entity_id, summary
         return [], entity_id, None
 
+    def _weather_condition_label(self, condition: str | None) -> str:
+        key = str(condition or "").strip().lower()
+        return WEATHER_FRIENDLY_STATES.get(key, key.replace("-", " ") or "weather")
+
+    def _weather_forecast(self, weather_entity: str | None) -> list[dict[str, Any]]:
+        state = self._state_obj(weather_entity)
+        if state is None:
+            return []
+        forecast = state.attributes.get("forecast")
+        if not isinstance(forecast, list):
+            return []
+        return [item for item in forecast if isinstance(item, dict)][:6]
+
+    def _weather_insights(self, weather_entity: str | None) -> tuple[list[tuple[int, str]], dict[str, Any]]:
+        state = self._state_obj(weather_entity)
+        weather_stats = {
+            "weather_entity": weather_entity,
+            "weather_state": None,
+            "weather_temperature": None,
+            "weather_apparent_temperature": None,
+            "weather_humidity": None,
+            "weather_wind_speed": None,
+            "weather_forecast_summary": None,
+        }
+        if state is None:
+            return [], weather_stats
+
+        attrs = state.attributes
+        condition = self._weather_condition_label(state.state)
+        temperature = attrs.get("temperature")
+        apparent = attrs.get("apparent_temperature")
+        humidity = attrs.get("humidity")
+        wind_speed = attrs.get("wind_speed")
+        forecast = self._weather_forecast(weather_entity)
+        scored: list[tuple[int, str]] = []
+
+        weather_stats.update(
+            {
+                "weather_state": state.state,
+                "weather_temperature": temperature,
+                "weather_apparent_temperature": apparent,
+                "weather_humidity": humidity,
+                "weather_wind_speed": wind_speed,
+            }
+        )
+
+        try:
+            current_temp = float(apparent if apparent is not None else temperature)
+        except (TypeError, ValueError):
+            current_temp = None
+
+        try:
+            current_wind = float(wind_speed) if wind_speed is not None else None
+        except (TypeError, ValueError):
+            current_wind = None
+
+        precip_soon = None
+        hot_soon = None
+        cold_soon = None
+        for item in forecast:
+            condition_next = str(item.get("condition") or "").lower()
+            if precip_soon is None and condition_next in {"rainy", "pouring", "snowy", "snowy-rainy", "hail", "lightning-rainy"}:
+                precip_soon = condition_next
+            try:
+                next_temp = float(item.get("temperature")) if item.get("temperature") is not None else None
+            except (TypeError, ValueError):
+                next_temp = None
+            if hot_soon is None and next_temp is not None and next_temp >= 24:
+                hot_soon = next_temp
+            if cold_soon is None and next_temp is not None and next_temp <= 2:
+                cold_soon = next_temp
+
+        if current_temp is not None and current_temp <= 2:
+            scored.append((84, f"It is near freezing outside ({current_temp:.0f}°C). Dress warm if you are heading out."))
+        elif current_temp is not None and current_temp >= 24:
+            scored.append((58, f"Warm weather outside ({current_temp:.0f}°C). Good time to air out the house if pollen is not an issue."))
+
+        if state.state in {"rainy", "pouring", "lightning-rainy", "snowy", "snowy-rainy", "hail"}:
+            scored.append((78, f"Outside weather looks rough right now ({condition})."))
+        elif state.state in {"fog", "windy", "windy-variant"}:
+            scored.append((54, f"Outside weather is {condition} right now."))
+
+        if current_wind is not None and current_wind >= 10:
+            scored.append((68, f"It is windy outside ({current_wind:.0f} m/s). Secure anything light before airing out rooms."))
+
+        if precip_soon:
+            forecast_text = f"Weather outlook turns to {self._weather_condition_label(precip_soon)} soon."
+            weather_stats["weather_forecast_summary"] = forecast_text
+            scored.append((66, forecast_text))
+        elif hot_soon is not None:
+            weather_stats["weather_forecast_summary"] = f"Weather outlook warms up to around {hot_soon:.0f}°C soon."
+        elif cold_soon is not None:
+            weather_stats["weather_forecast_summary"] = f"Weather outlook drops to around {cold_soon:.0f}°C soon."
+
+        return scored, weather_stats
+
+    def _source_details(self) -> dict[str, dict[str, Any]]:
+        configured = self._configured_payload()
+        details: dict[str, dict[str, Any]] = {}
+        for key in CONFIGURED_ENTITY_FIELDS:
+            entity_id = self._effective_value(key)
+            if not entity_id:
+                continue
+            details[key] = {
+                "label": WEATHER_LABELS.get(key, key),
+                "entity_id": entity_id,
+                "mode": "explicit" if configured.get(key) not in (None, "") else "autofilled",
+            }
+
+        lights = list(self._effective_value(CONF_LIGHTS, []))
+        if lights:
+            details[CONF_LIGHTS] = {
+                "label": "Lights",
+                "entity_ids": lights,
+                "count": len(lights),
+                "mode": "explicit" if configured.get(CONF_LIGHTS) else "autofilled",
+            }
+        return details
+
+    def _source_summary(self, source_details: dict[str, dict[str, Any]]) -> tuple[list[str], int, int]:
+        explicit = 0
+        autofilled = 0
+        lines: list[str] = []
+        for key in sorted(source_details):
+            item = source_details[key]
+            mode = item.get("mode")
+            if mode == "explicit":
+                explicit += 1
+            elif mode == "autofilled":
+                autofilled += 1
+            label = str(item.get("label") or key)
+            if "entity_id" in item:
+                lines.append(f"{label}: {item['entity_id']} ({mode})")
+            else:
+                lines.append(f"{label}: {item.get('count', 0)} entities ({mode})")
+        return lines, explicit, autofilled
+
     def _update_appliance_state(
         self,
         previous: ApplianceState,
@@ -483,6 +652,9 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         temp_scored, indoor_temperature, temperature_entity = self._temperature_insights()
         scored.extend(temp_scored)
 
+        weather_scored, weather_stats = self._weather_insights(self._effective_value(CONF_WEATHER_ENTITY))
+        scored.extend(weather_scored)
+
         waste_pickups = self._waste_pickups()
         waste_pickup_summary = self._waste_pickup_summary(waste_pickups)
         if waste_pickup_summary:
@@ -520,6 +692,8 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             seen.add(text)
             deduped.append(text)
 
+        source_details = self._source_details()
+        source_summary, explicit_source_count, autofilled_source_count = self._source_summary(source_details)
         effective_config = self._effective_config()
         summary = deduped[0]
         stats = {
@@ -560,6 +734,11 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             "discovery_lights_autofilled": self.discovery_summary.get("lights_autofilled", False),
             "discovery_scanned_at": self.discovery_scanned_at,
             "effective_config": effective_config,
+            "source_details": source_details,
+            "source_summary": source_summary,
+            "source_explicit_count": explicit_source_count,
+            "source_autofilled_count": autofilled_source_count,
             "last_build_at": datetime.now(UTC).isoformat(),
         }
+        stats.update(weather_stats)
         return BriefData(summary=summary, insights=deduped, stats=stats)

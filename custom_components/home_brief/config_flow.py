@@ -26,6 +26,7 @@ from .const import (
     CONF_WASHER_DONE_THRESHOLD,
     CONF_WASHER_POWER_ENTITY,
     CONF_WASHER_STATUS_ENTITY,
+    CONF_WEATHER_ENTITY,
     DEFAULT_AWAY_POWER_THRESHOLD,
     DEFAULT_DRYER_DONE_THRESHOLD,
     DEFAULT_HUMIDITY_THRESHOLD,
@@ -45,6 +46,7 @@ _SIGNAL_FIELDS: tuple[str, ...] = (
     CONF_HOME_POWER_ENTITY,
     CONF_OCCUPANCY_ENTITY,
     CONF_HUMIDITY_ENTITY,
+    CONF_WEATHER_ENTITY,
 )
 
 
@@ -94,6 +96,9 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             ),
             _optional_with_default(CONF_HUMIDITY_ENTITY, defaults): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", multiple=False)
+            ),
+            _optional_with_default(CONF_WEATHER_ENTITY, defaults): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="weather", multiple=False)
             ),
             vol.Optional(CONF_LIGHTS, default=defaults.get(CONF_LIGHTS, [])): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="light", multiple=True)

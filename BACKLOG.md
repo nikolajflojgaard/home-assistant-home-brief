@@ -2,6 +2,12 @@
 
 This repo needs an explicit iteration trail. Here it is.
 
+## Done in 0.4.0
+
+- Added auto-discovered weather awareness so Home Brief can surface practical outside-condition nudges without requiring a separate weather config ritual.
+- Added weather and source-attribution attributes to the summary sensor, including explicit-vs-autofilled breakdown for easier troubleshooting and trust.
+- Updated the Lovelace card to show outdoor temperature plus a lightweight sources panel so users can see what Home Brief is actually reading.
+
 ## Done in 0.3.1
 
 - Reworked household chores handling so Home Brief now cleans, prioritizes, and summarizes chore lists instead of dumping the first few raw strings.
@@ -20,14 +26,13 @@ This repo needs an explicit iteration trail. Here it is.
 
 ### UX
 
-- Surface "auto-filled vs explicitly pinned" more clearly in the Lovelace card or more-info view instead of only in diagnostics/stats.
-- Add icons / semantic markers for each insight type so dense states scan even faster.
 - Ship real screenshots / demo GIFs instead of placeholders.
 - Tighten visual hierarchy further for the card's default mobile width now that it carries more agenda structure.
 
 ### Intelligence
 
-- Expand discovery toward appliance state, weather, and power-price ecosystems that use richer integration metadata instead of mostly name scoring.
+- Expand discovery toward appliance state and power-price ecosystems that use richer integration metadata instead of mostly name scoring.
+- Make weather hints smarter by considering forecast timing, precipitation probability, and seasonality when that metadata is exposed.
 - Group related insights into packs so one theme does not drown everything else out.
 - Add stronger appliance heuristics from longer history instead of minute-by-minute state only.
 - Add EV / charger-specific timing hints.

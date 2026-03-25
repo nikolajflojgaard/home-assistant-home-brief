@@ -19,6 +19,7 @@ from .const import (
     CONF_SOLAR_POWER_ENTITY,
     CONF_WASHER_POWER_ENTITY,
     CONF_WASHER_STATUS_ENTITY,
+    CONF_WEATHER_ENTITY,
     DOMAIN,
 )
 from .discovery import discover_defaults, effective_defaults, summarize_discovery
@@ -33,6 +34,7 @@ _TO_REDACT = {
     CONF_HOME_POWER_ENTITY,
     CONF_OCCUPANCY_ENTITY,
     CONF_HUMIDITY_ENTITY,
+    CONF_WEATHER_ENTITY,
     CONF_LIGHTS,
 }
 
@@ -68,7 +70,10 @@ async def async_get_config_entry_diagnostics(
             "last_exception": repr(getattr(coordinator, "last_exception", None)),
             "summary": getattr(getattr(coordinator, "data", None), "summary", None),
             "insights": getattr(getattr(coordinator, "data", None), "insights", None),
-            "stats": async_redact_data(getattr(getattr(coordinator, "data", None), "stats", {}) or {}, {"missing_entities", "discovery_defaults", "effective_config"}),
+            "stats": async_redact_data(
+                getattr(getattr(coordinator, "data", None), "stats", {}) or {},
+                {"missing_entities", "discovery_defaults", "effective_config", "source_details", "source_summary"},
+            ),
             "stored_discovery": {
                 "summary": getattr(coordinator, "discovery_summary", {}),
                 "scanned_at": getattr(coordinator, "discovery_scanned_at", ""),

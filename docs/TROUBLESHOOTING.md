@@ -64,3 +64,20 @@ The diagnostics bundle includes:
 - discovery summary
 - current coordinator output
 - last exception string, if any
+
+## Weather hints are missing
+
+Home Brief only shows weather-aware insights when it can find a usable `weather.*` entity or when you explicitly pick one in options.
+
+If weather hints are missing:
+
+- open Home Brief options
+- confirm a weather entity is suggested or select one manually
+- make sure the weather entity is available and not `unavailable`
+- run `home_brief.rescan` if you added weather after initial setup
+
+## I cannot tell which sources are explicit vs auto-filled
+
+Home Brief now exposes `source_details`, `source_summary`, `source_explicit_count`, and `source_autofilled_count` on the summary sensor.
+
+Use those attributes or the Lovelace card sources panel to verify whether a signal is pinned by you or currently coming from discovery fallback.

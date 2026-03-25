@@ -19,6 +19,7 @@ from .const import (
     CONF_SOLAR_POWER_ENTITY,
     CONF_WASHER_POWER_ENTITY,
     CONF_WASHER_STATUS_ENTITY,
+    CONF_WEATHER_ENTITY,
 )
 
 _DISCOVERY_KEYS: tuple[str, ...] = (
@@ -31,6 +32,7 @@ _DISCOVERY_KEYS: tuple[str, ...] = (
     CONF_HOME_POWER_ENTITY,
     CONF_OCCUPANCY_ENTITY,
     CONF_HUMIDITY_ENTITY,
+    CONF_WEATHER_ENTITY,
 )
 
 PREFERRED_TEMPERATURE_ENTITY_IDS: tuple[str, ...] = (
@@ -238,6 +240,12 @@ def discover_defaults(hass: HomeAssistant) -> dict[str, Any]:
             preferred_units=("%",),
             preferred_device_classes=("humidity",),
             preferred_state_classes=("measurement",),
+        ),
+        CONF_WEATHER_ENTITY: _find_best(
+            states,
+            domains=("weather",),
+            include=("weather", "forecast", "met", "yr", "home"),
+            exclude=("hourly", "daily", "backup"),
         ),
         CONF_LIGHTS: _find_lights(states),
     }
