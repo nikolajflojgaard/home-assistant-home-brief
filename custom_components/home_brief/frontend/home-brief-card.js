@@ -750,11 +750,16 @@ class HomeBriefCard extends HTMLElement {
   }
 }
 
-customElements.define('home-brief-card', HomeBriefCard);
+if (!customElements.get('home-brief-card')) {
+  customElements.define('home-brief-card', HomeBriefCard);
+}
+
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: 'home-brief-card',
-  name: 'Home Brief Card',
-  description: 'Shows a human-readable brief for your home.',
-  preview: true,
-});
+if (!window.customCards.some((card) => card?.type === 'home-brief-card')) {
+  window.customCards.push({
+    type: 'home-brief-card',
+    name: 'Home Brief Card',
+    description: 'Shows a human-readable brief for your home.',
+    preview: true,
+  });
+}

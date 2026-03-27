@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4.6
+
+- Fixed the Lovelace card frontend registration to use a versioned resource URL, so Home Assistant/browser caches pick up new card builds instead of serving stale JavaScript after upgrades.
+- Made the card bootstrap idempotent by guarding both `customElements.define()` and `window.customCards.push()`, which avoids duplicate-registration failures when Home Assistant reloads frontend resources.
+- This should restore reliable card discovery in the card picker and prevent post-upgrade configuration errors caused by stale or double-loaded frontend assets.
+
 ## 0.4.5
 
 - Added an explicit HACS validation workflow so repository/release checks cover the current custom integration packaging expectations, including shipped `brand/` assets.
