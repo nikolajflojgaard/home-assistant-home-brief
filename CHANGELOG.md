@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4.1
+
+- Fixed whole-home power discovery so auto-filled home load prefers credible whole-home/grid consumption sensors instead of latching onto generic power entities.
+- Suppressed bogus `Home 0 W` presentation by treating zero/negative home load as non-meaningful for surplus logic and Lovelace chip rendering.
+- Reworked household chores parsing/rendering to consume structured task objects and present clean title/date/assignee rows instead of raw JSON blobs.
+
 ## 0.4.0
 
 - Added auto-discovered weather support so Home Brief can surface practical outside-condition and near-term forecast nudges without extra setup in typical Home Assistant installs.

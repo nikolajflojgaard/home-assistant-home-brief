@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+import json
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -100,6 +101,32 @@ class BriefData:
     summary: str
     insights: list[str]
     stats: dict[str, Any]
+
+
+@dataclass(slots=True)
+class ChoreItem:
+    title: str
+    date: str | None = None
+    assignee_names: list[str] | None = None
+
+    def as_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {"title": self.title}
+        if self.date:
+            payload["date"] = self.date
+        if self.assignee_names:
+            payload["assignee_names"] = self.assignee_names
+        return payload
+
+    def as_text(self) -> str:
+        parts = [self.title]
+        meta: list[str] = []
+        if self.date:
+            meta.append(self.date)
+        if self.assignee_names:
+            meta.append(", ".join(self.assignee_names))
+        if meta:
+            parts.append(f"({' • '.join(meta)})")
+        return " ".join(parts)
 
 
 class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
@@ -331,6 +358,13 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             text = value.strip()
             if not text or text.lower() in {"unknown", "unavailable", "none"}:
                 return []
+            if text.startswith("[") or text.startswith("{"):
+                try:
+                    parsed = json.loads(text)
+                except json.JSONDecodeError:
+                    parsed = None
+                if parsed is not None:
+                    return self._normalize_text_list(parsed)
             separators = ("\n", " • ", " · ", "|", ";")
             parts = [text]
             for separator in separators:
@@ -342,6 +376,8 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         if isinstance(value, Iterable) and not isinstance(value, (bytes, bytearray, dict)):
             items: list[str] = []
             for item in value:
+                if isinstance(item, dict):
+                    continue
                 text = str(item).strip(" -•·")
                 if text and text.lower() not in {"unknown", "unavailable", "none"}:
                     items.append(text)
@@ -367,7 +403,71 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             score += 12
         return score
 
-    def _household_chores(self) -> tuple[list[str], str | None, str | None]:
+    def _normalize_assignee_names(self, value: Any) -> list[str]:
+        names: list[str] = []
+        if isinstance(value, str):
+            text = value.strip()
+            if text:
+                names.append(text)
+        elif isinstance(value, Iterable) and not isinstance(value, (bytes, bytearray, dict)):
+            for item in value:
+                text = str(item).strip()
+                if text:
+                    names.append(text)
+        return names
+
+    def _extract_chore_item(self, value: Any) -> ChoreItem | None:
+        if isinstance(value, dict):
+            title = str(value.get("title") or "").strip()
+            if not title:
+                return None
+            date = str(value.get("date") or "").strip() or None
+            assignee_names = self._normalize_assignee_names(value.get("assignee_names"))
+            return ChoreItem(
+                title=self._clean_signal_name(title),
+                date=date,
+                assignee_names=assignee_names or None,
+            )
+
+        if isinstance(value, str):
+            text = value.strip()
+            if not text or text.lower() in {"unknown", "unavailable", "none"}:
+                return None
+            if text.startswith("{"):
+                try:
+                    parsed = json.loads(text)
+                except json.JSONDecodeError:
+                    parsed = None
+                if isinstance(parsed, dict):
+                    return self._extract_chore_item(parsed)
+            cleaned = self._clean_signal_name(text)
+            return ChoreItem(title=cleaned) if cleaned else None
+
+        return None
+
+    def _normalize_chore_items(self, value: Any) -> list[ChoreItem]:
+        if isinstance(value, str):
+            text = value.strip()
+            if text.startswith("[") or text.startswith("{"):
+                try:
+                    parsed = json.loads(text)
+                except json.JSONDecodeError:
+                    parsed = None
+                if parsed is not None:
+                    return self._normalize_chore_items(parsed)
+
+        if isinstance(value, Iterable) and not isinstance(value, (bytes, bytearray, dict, str)):
+            items: list[ChoreItem] = []
+            for item in value:
+                chore = self._extract_chore_item(item)
+                if chore is not None:
+                    items.append(chore)
+            return items
+
+        chore = self._extract_chore_item(value)
+        return [chore] if chore is not None else []
+
+    def _household_chores(self) -> tuple[list[dict[str, Any]], str | None, str | None]:
         entity_id = find_household_chores_entity(self.hass)
         state = self._state_obj(entity_id)
         if state is None:
@@ -384,6 +484,22 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             state.state,
         ]
         for candidate in candidates:
+            structured_items = self._normalize_chore_items(candidate)
+            if structured_items:
+                prioritized = sorted(
+                    enumerate(structured_items),
+                    key=lambda item: self._chore_priority(item[1].as_text(), item[0]),
+                    reverse=True,
+                )
+                chores = [item.as_dict() for _, item in prioritized if item.title][:5]
+                if not chores:
+                    return [], entity_id, None
+                top_task = chores[0]["title"]
+                extra_count = max(0, len(chores) - 1)
+                suffix = f" +{extra_count} more" if extra_count else ""
+                summary = f"Household focus: {top_task}{suffix}."
+                return chores, entity_id, summary
+
             items = self._normalize_text_list(candidate)
             if items:
                 cleaned = [self._clean_signal_name(item) for item in items]
@@ -392,15 +508,29 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
                     key=lambda item: self._chore_priority(item[1], item[0]),
                     reverse=True,
                 )
-                chores = [item for _, item in prioritized if item][:5]
+                chores = [{"title": item} for _, item in prioritized if item][:5]
                 if not chores:
                     return [], entity_id, None
-                top_task = chores[0]
+                top_task = chores[0]["title"]
                 extra_count = max(0, len(chores) - 1)
                 suffix = f" +{extra_count} more" if extra_count else ""
                 summary = f"Household focus: {top_task}{suffix}."
                 return chores, entity_id, summary
         return [], entity_id, None
+
+    def _resolve_home_power(self) -> tuple[float | None, str | None, str | None]:
+        entity_id = self._effective_value(CONF_HOME_POWER_ENTITY)
+        watts = self._power_state_watts(entity_id)
+        source_mode = None
+        if entity_id:
+            configured = self._configured_payload()
+            source_mode = "explicit" if configured.get(CONF_HOME_POWER_ENTITY) not in (None, "") else "autofilled"
+
+        if watts is None:
+            return None, entity_id, source_mode
+        if watts <= 0:
+            return None, entity_id, source_mode
+        return watts, entity_id, source_mode
 
     def _weather_condition_label(self, condition: str | None) -> str:
         key = str(condition or "").strip().lower()
@@ -622,7 +752,7 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
                 scored.append((65, f"Power is cheap right now ({price:.2f})."))
 
         solar = self._power_state_watts(self._effective_value(CONF_SOLAR_POWER_ENTITY))
-        home_power = self._power_state_watts(self._effective_value(CONF_HOME_POWER_ENTITY))
+        home_power, home_power_entity, home_power_source_mode = self._resolve_home_power()
         away_power_threshold = float(self._configured_value(CONF_AWAY_POWER_THRESHOLD, DEFAULT_AWAY_POWER_THRESHOLD))
 
         if solar is not None and solar >= 1500:
@@ -701,6 +831,9 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             "power_price": price,
             "solar_power": solar,
             "home_power": home_power,
+            "home_power_entity": home_power_entity,
+            "home_power_source_mode": home_power_source_mode,
+            "home_power_meaningful": home_power is not None,
             "humidity": humidity,
             "indoor_temperature": indoor_temperature,
             "temperature_entity": temperature_entity,

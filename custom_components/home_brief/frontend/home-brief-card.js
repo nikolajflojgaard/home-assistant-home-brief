@@ -69,7 +69,7 @@ class HomeBriefCard extends HTMLElement {
       const tone = attrs.solar_surplus ? 'good' : 'neutral';
       chips.push(this._formatChip('Solar', `${this._formatNumber(attrs.solar_power)} W`, tone));
     }
-    if (attrs.home_power !== undefined && attrs.home_power !== null) {
+    if (attrs.home_power_meaningful && attrs.home_power !== undefined && attrs.home_power !== null) {
       chips.push(this._formatChip('Home', `${this._formatNumber(attrs.home_power)} W`));
     }
     if (attrs.indoor_temperature !== undefined && attrs.indoor_temperature !== null) {
@@ -141,21 +141,45 @@ class HomeBriefCard extends HTMLElement {
     `;
   }
 
+  _normalizeChore(item) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      const fallback = String(item ?? '').trim();
+      return fallback ? { title: fallback, date: null, assignee_names: [] } : null;
+    }
+
+    const title = String(item.title ?? '').trim();
+    if (!title) return null;
+    const date = item.date ? String(item.date).trim() : null;
+    const assignee_names = Array.isArray(item.assignee_names)
+      ? item.assignee_names.map((name) => String(name).trim()).filter(Boolean)
+      : [];
+
+    return { title, date, assignee_names };
+  }
+
   _chorePanel(attrs) {
-    const chores = Array.isArray(attrs.household_chores) ? attrs.household_chores : [];
+    const chores = (Array.isArray(attrs.household_chores) ? attrs.household_chores : [])
+      .map((item) => this._normalizeChore(item))
+      .filter(Boolean);
     if (!chores.length) return '';
 
     return `
       <section class="panel panel-agenda">
         <div class="section-title">Household focus</div>
-        <ul class="insights chores">
-          ${chores.slice(0, 4).map((item, index) => `
-            <li class="insight chore-item ${index === 0 ? 'primary' : ''}">
-              <span class="insight-marker">${index === 0 ? 'Next' : `${index + 1}`}</span>
-              <span>${this._escapeHtml(item)}</span>
-            </li>
-          `).join('')}
-        </ul>
+        <div class="chore-list">
+          ${chores.slice(0, 4).map((item, index) => {
+            const meta = [item.date, item.assignee_names.length ? item.assignee_names.join(', ') : null].filter(Boolean);
+            return `
+              <div class="agenda-row chore-row ${index === 0 ? 'primary' : ''}">
+                <div>
+                  <div class="agenda-label">${this._escapeHtml(item.title)}</div>
+                  ${meta.length ? `<div class="agenda-subtle">${this._escapeHtml(meta.join(' • '))}</div>` : ''}
+                </div>
+                <span class="agenda-badge ${index === 0 ? 'agenda-badge-accent' : ''}">${index === 0 ? 'Next' : `${index + 1}`}</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
       </section>
     `;
   }
@@ -440,7 +464,8 @@ class HomeBriefCard extends HTMLElement {
         text-transform: uppercase;
         letter-spacing: 0.05em;
       }
-      .waste-list {
+      .waste-list,
+      .chore-list {
         display: grid;
         gap: 8px;
       }
@@ -477,6 +502,9 @@ class HomeBriefCard extends HTMLElement {
       }
       .agenda-badge-accent {
         background: color-mix(in srgb, var(--primary-color) 13%, var(--card-background-color));
+      }
+      .chore-row.primary {
+        background: color-mix(in srgb, var(--primary-color) 10%, var(--card-background-color));
       }
       .sources-meta {
         display: flex;

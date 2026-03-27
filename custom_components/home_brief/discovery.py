@@ -166,6 +166,43 @@ def _find_lights(states: Iterable[State]) -> list[str]:
     return [entity_id for _, entity_id in ranked[:6]]
 
 
+def _find_home_power_entity(states: Iterable[State]) -> str | None:
+    """Return a best-effort whole-home power sensor, not just any power sensor."""
+    ranked: list[tuple[int, str]] = []
+    for state in states:
+        score = _score_entity(
+            state,
+            domains=("sensor",),
+            include=("power", "forbrug", "consumption", "load", "grid", "house", "home"),
+            exclude=("washer", "dryer", "solar", "pv", "charger", "car", "battery", "humidity"),
+            preferred_units=("w", "kw"),
+            preferred_device_classes=("power",),
+            preferred_state_classes=("measurement",),
+        )
+        if score is None:
+            continue
+
+        hay = _haystack(state)
+        if any(token in hay for token in ("home power", "house power", "whole home", "total power", "home load", "house load")):
+            score += 40
+        if any(token in hay for token in ("grid power", "grid consumption", "power import", "import power", "forbrug", "consumption")):
+            score += 26
+        if any(token in hay for token in ("socket", "plug", "switch", "appliance", "device", "kitchen", "living room", "stue")):
+            score -= 18
+        if any(token in hay for token in ("phase a", "phase b", "phase c", "l1", "l2", "l3")):
+            score -= 16
+        ranked.append((score, state.entity_id))
+
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+    if not ranked:
+        return None
+
+    best_score, best_entity_id = ranked[0]
+    if best_score < 44:
+        return None
+    return best_entity_id
+
+
 def discover_defaults(hass: HomeAssistant) -> dict[str, Any]:
     """Return best-effort defaults for common Home Brief fields."""
     states = list(hass.states.async_all())
@@ -218,15 +255,7 @@ def discover_defaults(hass: HomeAssistant) -> dict[str, Any]:
             preferred_device_classes=("power",),
             preferred_state_classes=("measurement",),
         ),
-        CONF_HOME_POWER_ENTITY: _find_best(
-            states,
-            domains=("sensor",),
-            include=("home power", "house power", "grid power", "load power", "power", "forbrug"),
-            exclude=("washer", "dryer", "solar", "pv", "charger", "car", "battery", "humidity"),
-            preferred_units=("w", "kw"),
-            preferred_device_classes=("power",),
-            preferred_state_classes=("measurement",),
-        ),
+        CONF_HOME_POWER_ENTITY: _find_home_power_entity(states),
         CONF_OCCUPANCY_ENTITY: _find_best(
             states,
             domains=("binary_sensor", "group", "person", "input_boolean"),
