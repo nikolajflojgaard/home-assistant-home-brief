@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4.2
+
+- Added packaged `custom_components/home_brief/brand/` assets so Home Assistant 2026.3+ can resolve the integration icon/logo from the local brands API.
+- Kept existing root/HACS branding assets intact while fixing the in-product integration branding path.
+
 ## 0.4.1
 
 - Fixed whole-home power discovery so auto-filled home load prefers credible whole-home/grid consumption sensors instead of latching onto generic power entities.
