@@ -51,7 +51,9 @@ It is intentionally opinionated. The goal is useful signal, not another bloated 
 4. Add the integration from **Settings → Devices & Services**.
 5. Review the prefilled entity suggestions and adjust them if needed.
 
-On Home Assistant 2026.3 and newer, the integration now ships its own `custom_components/home_brief/brand/` assets so icon/logo rendering no longer depends on a `home-assistant/brands` PR.
+On Home Assistant 2026.3 and newer, the integration ships its own `custom_components/home_brief/brand/` assets, so the icon/logo should render on the Home Assistant **Integrations** page without needing a `home-assistant/brands` PR.
+
+Important reality check: current HACS builds still have an open gap where some store/dashboard views fetch icons from HACS metadata instead of Home Assistant's local `/api/brands/...` endpoint. That means Home Brief can show correct branding inside Home Assistant while still appearing blank inside parts of the HACS UI until HACS ships a fallback/fix.
 
 ### Manual
 

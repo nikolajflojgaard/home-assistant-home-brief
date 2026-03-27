@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4.5
+
+- Added an explicit HACS validation workflow so repository/release checks cover the current custom integration packaging expectations, including shipped `brand/` assets.
+- Clarified the README to separate Home Assistant brand support from the still-open HACS dashboard icon gap, so the project docs match current real-world behavior.
+- Confirmed the integration already ships the expected `custom_components/home_brief/brand/` files; blank HACS store branding is now documented as an upstream HACS limitation rather than a missing package asset.
+
 ## 0.4.4
 
 - Reworked the Lovelace card visual design with stronger hierarchy, calmer spacing, larger headline typography, softer panel treatment, and a more product-like overall layout.
