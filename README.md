@@ -183,10 +183,11 @@ Card behavior:
 
 - opens more-info on click
 - highlights warnings when configured source entities are missing
-- shows compact chips for price / solar / home load / indoor temperature / outdoor temperature / humidity
-- keeps the top insight visually emphasized
-- groups upcoming chores and waste pickups into a dedicated agenda area instead of mixing them into the raw signal feed
-- renders remaining insights as a separate signal stack so the card stays useful when the house is noisy
+- presents price / solar / home load / indoor temperature / outdoor temperature / humidity as cleaner metric tiles instead of loose chip clutter
+- gives the top insight stronger visual priority with clearer product-style spacing and typography
+- groups chores and waste pickups into a dedicated agenda column with calmer nested panels
+- turns secondary states into labeled attention rows so setup issues and household nudges are easier to scan
+- renders remaining insights as a cleaner signal stack so the card stays useful when the house is noisy
 
 ## Diagnostics
 

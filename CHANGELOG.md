@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4.4
+
+- Reworked the Lovelace card visual design with stronger hierarchy, calmer spacing, larger headline typography, softer panel treatment, and a more product-like overall layout.
+- Replaced the loose metric chip row with cleaner metric tiles and converted status pills into labeled attention rows so important signals scan faster without the developer-UI feel.
+- Tightened agenda, signals, and sources presentation so chores, waste pickups, setup issues, and follow-up insights feel intentional instead of visually noisy.
+
 ## 0.4.3
 
 - Fixed the packaged `custom_components/home_brief/brand/` set so Home Assistant 2026.3+ serves the actual landscape logo via the local brands API instead of a stale square asset.
