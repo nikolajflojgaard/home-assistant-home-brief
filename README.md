@@ -51,6 +51,8 @@ It is intentionally opinionated. The goal is useful signal, not another bloated 
 4. Add the integration from **Settings → Devices & Services**.
 5. Review the prefilled entity suggestions and adjust them if needed.
 
+On Home Assistant 2026.3 and newer, the integration now ships its own `custom_components/home_brief/brand/` assets so icon/logo rendering no longer depends on a `home-assistant/brands` PR.
+
 ### Manual
 
 1. Copy `custom_components/home_brief` into your Home Assistant `custom_components` directory.

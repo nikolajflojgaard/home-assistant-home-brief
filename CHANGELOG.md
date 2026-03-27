@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4.3
+
+- Fixed the packaged `custom_components/home_brief/brand/` set so Home Assistant 2026.3+ serves the actual landscape logo via the local brands API instead of a stale square asset.
+- Added the missing high-DPI `@2x` brand files to the shipped integration directory so repo-native branding is complete for new Home Assistant brands-proxy consumers.
+- Kept existing repo-root HACS branding assets intact.
+
 ## 0.4.2
 
 - Added packaged `custom_components/home_brief/brand/` assets so Home Assistant 2026.3+ can resolve the integration icon/logo from the local brands API.
