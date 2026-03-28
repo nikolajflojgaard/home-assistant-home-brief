@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4.7
+
+- Hardened household chore normalization so Home Brief now handles more real-world task payload shapes (`title`/`name`/`task`, alternate due-date fields, nested assignee objects) instead of leaking raw object text into the summary sensor and card.
+- Cleaned Lovelace agenda rendering for chores by formatting ISO-style dates into human-readable labels and supporting richer assignee payloads, which should stop the ugly JSON-ish rows that slipped through in mixed chore integrations.
+- Kept this release focused on boring stability: no new feature surface, just safer parsing and cleaner frontend output for existing installs.
+
 ## 0.4.6
 
 - Fixed the Lovelace card frontend registration to use a versioned resource URL, so Home Assistant/browser caches pick up new card builds instead of serving stale JavaScript after upgrades.

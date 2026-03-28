@@ -140,18 +140,47 @@ class HomeBriefCard extends HTMLElement {
     `;
   }
 
+  _normalizeAssigneeNames(value) {
+    if (typeof value === 'string') {
+      const text = value.trim();
+      return text ? [text] : [];
+    }
+    if (Array.isArray(value)) {
+      return value.flatMap((item) => this._normalizeAssigneeNames(item));
+    }
+    if (value && typeof value === 'object') {
+      const text = String(value.name ?? value.display_name ?? value.full_name ?? value.title ?? '').trim();
+      return text ? [text] : [];
+    }
+    return [];
+  }
+
+  _formatChoreDate(value) {
+    const text = String(value ?? '').trim();
+    if (!text) return null;
+    const normalized = text.endsWith('Z') ? `${text.slice(0, -1)}+00:00` : text;
+    const date = new Date(normalized);
+    if (Number.isNaN(date.getTime())) return text;
+
+    try {
+      return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date);
+    } catch (_error) {
+      return text;
+    }
+  }
+
   _normalizeChore(item) {
     if (!item || typeof item !== 'object' || Array.isArray(item)) {
       const fallback = String(item ?? '').trim();
       return fallback ? { title: fallback, date: null, assignee_names: [] } : null;
     }
 
-    const title = String(item.title ?? '').trim();
+    const title = String(item.title ?? item.name ?? item.task ?? item.summary ?? '').trim();
     if (!title) return null;
-    const date = item.date ? String(item.date).trim() : null;
-    const assignee_names = Array.isArray(item.assignee_names)
-      ? item.assignee_names.map((name) => String(name).trim()).filter(Boolean)
-      : [];
+    const date = this._formatChoreDate(item.date ?? item.due ?? item.due_date ?? item.deadline);
+    const assignee_names = this._normalizeAssigneeNames(item.assignee_names ?? item.assignees ?? item.assigned_to)
+      .map((name) => String(name).trim())
+      .filter(Boolean);
 
     return { title, date, assignee_names };
   }

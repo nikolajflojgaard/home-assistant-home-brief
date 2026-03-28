@@ -7,7 +7,7 @@ from collections.abc import Iterable
 import json
 import re
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -409,20 +409,64 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             text = value.strip()
             if text:
                 names.append(text)
-        elif isinstance(value, Iterable) and not isinstance(value, (bytes, bytearray, dict)):
-            for item in value:
-                text = str(item).strip()
+        elif isinstance(value, dict):
+            for key in ("name", "display_name", "full_name", "title"):
+                text = str(value.get(key) or "").strip()
                 if text:
                     names.append(text)
-        return names
+                    break
+        elif isinstance(value, Iterable) and not isinstance(value, (bytes, bytearray)):
+            for item in value:
+                names.extend(self._normalize_assignee_names(item))
+
+        deduped: list[str] = []
+        seen: set[str] = set()
+        for name in names:
+            normalized = re.sub(r"\s+", " ", name).strip(" -•·")
+            key = normalized.casefold()
+            if normalized and key not in seen:
+                seen.add(key)
+                deduped.append(normalized)
+        return deduped
+
+    def _normalize_chore_date(self, value: Any) -> str | None:
+        text = str(value or "").strip()
+        if not text:
+            return None
+        if text.endswith("Z"):
+            text = f"{text[:-1]}+00:00"
+        for parser in (datetime.fromisoformat, date.fromisoformat):
+            try:
+                parsed = parser(text)
+            except ValueError:
+                continue
+            if isinstance(parsed, datetime):
+                return parsed.date().isoformat()
+            return parsed.isoformat()
+        return text
 
     def _extract_chore_item(self, value: Any) -> ChoreItem | None:
         if isinstance(value, dict):
-            title = str(value.get("title") or "").strip()
+            title = str(
+                value.get("title")
+                or value.get("name")
+                or value.get("task")
+                or value.get("summary")
+                or ""
+            ).strip()
             if not title:
                 return None
-            date = str(value.get("date") or "").strip() or None
-            assignee_names = self._normalize_assignee_names(value.get("assignee_names"))
+            date = self._normalize_chore_date(
+                value.get("date")
+                or value.get("due")
+                or value.get("due_date")
+                or value.get("deadline")
+            )
+            assignee_names = self._normalize_assignee_names(
+                value.get("assignee_names")
+                or value.get("assignees")
+                or value.get("assigned_to")
+            )
             return ChoreItem(
                 title=self._clean_signal_name(title),
                 date=date,
