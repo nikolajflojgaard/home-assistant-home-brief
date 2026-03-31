@@ -219,15 +219,12 @@ class HomeBriefCard extends HTMLElement {
 
   _sourcePanel(attrs) {
     const sources = Array.isArray(attrs.source_summary) ? attrs.source_summary : [];
-    if (!sources.length) return '';
+    if (!sources.length || !this._config?.show_debug) return '';
 
     return `
-      <section class="panel panel-sources">
-        <div class="panel-header compact">
-          <div>
-            <div class="section-kicker">Configuration</div>
-            <div class="section-title">Sources</div>
-          </div>
+      <section class="debug-panel">
+        <div class="debug-title-row">
+          <div class="debug-title">Source mapping</div>
           <div class="sources-meta">
             <span>${attrs.source_explicit_count ?? 0} explicit</span>
             <span>${attrs.source_autofilled_count ?? 0} auto-filled</span>
@@ -236,6 +233,96 @@ class HomeBriefCard extends HTMLElement {
         <ul class="source-list">
           ${sources.slice(0, 6).map((item) => `<li>${this._escapeHtml(item)}</li>`).join('')}
         </ul>
+      </section>
+    `;
+  }
+
+  _focusItems(attrs) {
+    const items = [];
+
+    if ((attrs.household_chores_count ?? 0) > 0) {
+      items.push({
+        title: attrs.household_chores_summary || `${attrs.household_chores_count} household task${attrs.household_chores_count === 1 ? '' : 's'} queued`,
+        meta: 'Household focus',
+        tone: 'accent',
+      });
+    }
+
+    if ((attrs.waste_pickup_count ?? 0) > 0) {
+      items.push({
+        title: attrs.waste_pickup_summary || `${attrs.waste_pickup_count} pickup${attrs.waste_pickup_count === 1 ? '' : 's'} coming up`,
+        meta: 'Waste & recycling',
+        tone: 'warning',
+      });
+    }
+
+    if ((attrs.washer_done_minutes ?? -1) >= 0 && attrs.washer_done) {
+      items.push({
+        title: `Washer finished ${attrs.washer_done_minutes} min ago`,
+        meta: 'Laundry',
+        tone: 'neutral',
+      });
+    }
+
+    if ((attrs.dryer_done_minutes ?? -1) >= 0 && attrs.dryer_done) {
+      items.push({
+        title: `Dryer finished ${attrs.dryer_done_minutes} min ago`,
+        meta: 'Laundry',
+        tone: 'neutral',
+      });
+    }
+
+    if ((attrs.lights_on ?? 0) > 0 && attrs.occupancy_home === false) {
+      items.push({
+        title: `${attrs.lights_on} light${attrs.lights_on === 1 ? '' : 's'} still on`,
+        meta: 'Away mode',
+        tone: 'warning',
+      });
+    }
+
+    if ((attrs.missing_entity_count ?? 0) > 0) {
+      items.push({
+        title: `${attrs.missing_entity_count} configured source ${attrs.missing_entity_count === 1 ? 'is' : 'are'} missing`,
+        meta: 'Setup',
+        tone: 'warning',
+      });
+    }
+
+    return items.slice(0, 4);
+  }
+
+  _signalRows(insights) {
+    if (!insights.length) return '';
+
+    return `
+      <section class="signal-stack" aria-label="Supporting signals">
+        ${insights.map((item) => `
+          <div class="signal-row">
+            <span class="signal-dot"></span>
+            <span class="signal-text">${this._escapeHtml(item)}</span>
+          </div>
+        `).join('')}
+      </section>
+    `;
+  }
+
+  _focusPanel(attrs) {
+    const items = this._focusItems(attrs);
+    if (!items.length) return '';
+
+    return `
+      <section class="focus-panel">
+        <div class="focus-title">Next up</div>
+        <div class="focus-list">
+          ${items.map((item, index) => `
+            <div class="focus-item focus-${item.tone} ${index === 0 ? 'focus-primary' : ''}">
+              <div class="focus-copy">
+                <div class="focus-headline">${this._escapeHtml(item.title)}</div>
+                <div class="focus-meta">${this._escapeHtml(item.meta)}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
       </section>
     `;
   }
@@ -258,10 +345,8 @@ class HomeBriefCard extends HTMLElement {
 
     const attrs = stateObj.attributes || {};
     const insights = Array.isArray(attrs.insights) ? attrs.insights : [];
-    const chores = Array.isArray(attrs.household_chores) ? attrs.household_chores : [];
     const tone = this._tone(attrs);
-    const metrics = this._metricTiles(attrs);
-    const statusItems = this._statusItems(attrs);
+    const metrics = this._metricTiles(attrs).slice(0, 4);
     const maxItems = this._config.max_items || 6;
     const primaryInsight = insights[0] || stateObj.state;
     const filteredInsights = insights.filter((item, index) => {
@@ -269,13 +354,11 @@ class HomeBriefCard extends HTMLElement {
       if (attrs.household_chores_summary && item === attrs.household_chores_summary) return false;
       if (attrs.waste_pickup_summary && item === attrs.waste_pickup_summary) return false;
       return true;
-    }).slice(0, maxItems - 1);
-
-    const agendaCount = (chores.length ? 1 : 0) + ((attrs.waste_pickup_count ?? 0) > 0 ? 1 : 0);
+    }).slice(0, Math.max(0, maxItems - 1));
 
     root.innerHTML = `
       <div class="content tone-${tone}">
-        <div class="hero-shell">
+        <div class="hero-shell minimal">
           <div class="hero-copy">
             <div class="eyebrow-row">
               <div class="eyebrow">Home Brief</div>
@@ -283,22 +366,10 @@ class HomeBriefCard extends HTMLElement {
             </div>
             <div class="summary">${this._escapeHtml(primaryInsight)}</div>
           </div>
-          <div class="hero-aside">
-            <div class="scorecard">
-              <div class="scorecard-value">${insights.length}</div>
-              <div class="scorecard-label">Active signals</div>
-            </div>
-            ${agendaCount ? `
-              <div class="scorecard scorecard-soft">
-                <div class="scorecard-value">${agendaCount}</div>
-                <div class="scorecard-label">Agenda sections</div>
-              </div>
-            ` : ''}
-          </div>
         </div>
 
         ${this._config.show_chips && metrics.length ? `
-          <section class="metrics-strip" aria-label="Key metrics">
+          <section class="metrics-strip clean" aria-label="Key metrics">
             ${metrics.map((item) => `
               <div class="metric-tile tone-${item.tone}">
                 <div class="metric-label">${this._escapeHtml(item.label)}</div>
@@ -308,60 +379,9 @@ class HomeBriefCard extends HTMLElement {
           </section>
         ` : ''}
 
-        ${this._config.show_secondary && statusItems.length ? `
-          <section class="panel panel-status">
-            <div class="panel-header compact">
-              <div>
-                <div class="section-kicker">At a glance</div>
-                <div class="section-title">What needs attention</div>
-              </div>
-            </div>
-            <div class="status-list">
-              ${statusItems.map((item) => `
-                <div class="status-item status-${item.tone}">
-                  <span class="status-label">${this._escapeHtml(item.label)}</span>
-                  <span class="status-text">${this._escapeHtml(item.text)}</span>
-                </div>
-              `).join('')}
-            </div>
-          </section>
-        ` : ''}
+        ${this._focusPanel(attrs)}
 
-        <div class="grid ${agendaCount ? 'with-agenda' : ''}">
-          ${agendaCount ? `
-            <section class="panel panel-agenda-stack">
-              <div class="panel-header">
-                <div>
-                  <div class="section-kicker">Upcoming</div>
-                  <div class="section-title">Agenda</div>
-                </div>
-              </div>
-              <div class="agenda-stack">
-                ${this._wasteTimeline(attrs)}
-                ${this._chorePanel(attrs)}
-              </div>
-            </section>
-          ` : ''}
-
-          ${filteredInsights.length ? `
-            <section class="panel panel-signals">
-              <div class="panel-header">
-                <div>
-                  <div class="section-kicker">House state</div>
-                  <div class="section-title">Signals</div>
-                </div>
-              </div>
-              <ul class="insights">
-                ${filteredInsights.map((item, index) => `
-                  <li class="insight">
-                    <span class="insight-index">${index + 1}</span>
-                    <span class="insight-text">${this._escapeHtml(item)}</span>
-                  </li>
-                `).join('')}
-              </ul>
-            </section>
-          ` : ''}
-        </div>
+        ${filteredInsights.length && this._config.show_secondary ? this._signalRows(filteredInsights) : ''}
 
         ${this._sourcePanel(attrs)}
       </div>
@@ -418,6 +438,9 @@ class HomeBriefCard extends HTMLElement {
         grid-template-columns: minmax(0, 1fr) auto;
         gap: 16px;
         align-items: start;
+      }
+      .hero-shell.minimal {
+        grid-template-columns: minmax(0, 1fr);
       }
       .hero-copy {
         min-width: 0;
@@ -494,6 +517,10 @@ class HomeBriefCard extends HTMLElement {
         grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
         gap: 10px;
         margin-top: 16px;
+      }
+      .metrics-strip.clean {
+        margin-top: 18px;
+        gap: 8px;
       }
       .metric-tile {
         padding: 12px 12px 13px;
@@ -721,8 +748,91 @@ class HomeBriefCard extends HTMLElement {
         line-height: 1.45;
         font-size: 13px;
       }
-      .panel-sources {
-        margin-top: 12px;
+      .focus-panel {
+        margin-top: 16px;
+      }
+      .focus-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--secondary-text-color);
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+      .focus-list {
+        display: grid;
+        gap: 8px;
+      }
+      .focus-item {
+        padding: 12px 14px;
+        border-radius: 18px;
+        background: color-mix(in srgb, var(--secondary-background-color) 62%, transparent);
+        border: 1px solid color-mix(in srgb, var(--divider-color) 42%, transparent);
+      }
+      .focus-primary {
+        background: color-mix(in srgb, var(--primary-color) 8%, var(--card-background-color));
+        border-color: color-mix(in srgb, var(--primary-color) 18%, transparent);
+      }
+      .focus-warning {
+        background: color-mix(in srgb, var(--warning-color) 8%, var(--card-background-color));
+        border-color: color-mix(in srgb, var(--warning-color) 18%, transparent);
+      }
+      .focus-headline {
+        font-size: 15px;
+        line-height: 1.35;
+        font-weight: 620;
+      }
+      .focus-meta {
+        margin-top: 4px;
+        color: var(--secondary-text-color);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+      .signal-stack {
+        display: grid;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .signal-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+        padding: 10px 0;
+        border-top: 1px solid color-mix(in srgb, var(--divider-color) 32%, transparent);
+      }
+      .signal-row:first-child {
+        border-top: 0;
+      }
+      .signal-dot {
+        width: 8px;
+        height: 8px;
+        margin-top: 6px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--primary-color) 50%, transparent);
+      }
+      .signal-text {
+        line-height: 1.45;
+        font-size: 13px;
+      }
+      .debug-panel {
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px dashed color-mix(in srgb, var(--divider-color) 46%, transparent);
+      }
+      .debug-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+      .debug-title {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--secondary-text-color);
+        font-weight: 700;
       }
       .sources-meta {
         display: flex;
