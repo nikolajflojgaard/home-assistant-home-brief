@@ -67,8 +67,10 @@ class HomeBriefCard extends HTMLElement {
     if (attrs.solar_power !== undefined && attrs.solar_power !== null) {
       const solar = Number(attrs.solar_power ?? 0);
       const home = Number(attrs.home_power ?? 0);
-      const tone = attrs.solar_surplus ? 'good' : (solar > 0 && home > 0 && solar < home ? 'danger' : 'neutral');
-      tiles.push({ label: 'Solar', value: this._formatNumber(attrs.solar_power), unit: 'W', tone });
+      if (solar > 0) {
+        const tone = attrs.solar_surplus ? 'good' : (home > 0 && solar < home ? 'danger' : 'neutral');
+        tiles.push({ label: 'Solar', value: this._formatNumber(attrs.solar_power), unit: 'W', tone });
+      }
     }
     if (attrs.home_power_meaningful && attrs.home_power !== undefined && attrs.home_power !== null) {
       tiles.push({ label: 'Home', value: this._formatNumber(attrs.home_power), unit: 'W', tone: 'neutral' });

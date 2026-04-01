@@ -748,7 +748,7 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             if not names:
                 continue
             for name in names:
-                person_load = load.setdefault(name, {"morning": 0, "afternoon": 0, "evening": 0, "anytime": 0, "total": 0})
+                person_load = load.setdefault(name, {"am": 0, "pm": 0, "anytime": 0, "total": 0})
                 person_load[slot] = person_load.get(slot, 0) + 1
                 person_load["total"] += 1
         return load
