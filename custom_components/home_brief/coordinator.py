@@ -504,11 +504,9 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         if not text:
             return None
         if any(token in text for token in ("morning", "morgen", "am")):
-            return "morning"
-        if any(token in text for token in ("afternoon", "middag", "eftermiddag")):
-            return "afternoon"
-        if any(token in text for token in ("evening", "night", "aften", "nat", "pm")):
-            return "evening"
+            return "am"
+        if any(token in text for token in ("afternoon", "middag", "eftermiddag", "evening", "night", "aften", "nat", "pm")):
+            return "pm"
         return None
 
     def _infer_slot(self, payload: dict[str, Any]) -> str | None:
@@ -707,12 +705,12 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
 
     def _slot_key(self, item: dict[str, Any]) -> str:
         slot = str(item.get("slot") or "").strip().lower()
-        if slot in {"morning", "afternoon", "evening"}:
+        if slot in {"am", "pm"}:
             return slot
         return "anytime"
 
     def _build_slot_summary(self, chores: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
-        slots: dict[str, list[dict[str, Any]]] = {"morning": [], "afternoon": [], "evening": [], "anytime": []}
+        slots: dict[str, list[dict[str, Any]]] = {"am": [], "pm": [], "anytime": []}
         for chore in chores:
             slots.setdefault(self._slot_key(chore), []).append(chore)
         return slots
@@ -721,7 +719,7 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         slots = self._build_slot_summary(chores)
         signals: list[dict[str, Any]] = []
         summaries: list[str] = []
-        for slot in ("morning", "afternoon", "evening"):
+        for slot in ("am", "pm"):
             items = slots.get(slot, [])
             if len(items) < 2:
                 continue
@@ -738,7 +736,8 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
                 "titles": [str(item.get("title") or "") for item in items[:4]],
                 "kind": "household_contention",
             })
-            summaries.append(f"{slot.title()} is crowded across the household ({len(items)} tasks, {len(people)} people).")
+            label = slot.upper()
+            summaries.append(f"{label} is crowded across the household ({len(items)} tasks, {len(people)} people).")
         return signals, summaries
 
     def _personal_slot_load(self, chores: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
@@ -757,7 +756,7 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
     def _slot_pressure(self, slots: dict[str, list[dict[str, Any]]], overlap_signals: list[dict[str, Any]]) -> list[dict[str, Any]]:
         pressure: list[dict[str, Any]] = []
         overlap_map = {str(item.get("slot")): item for item in overlap_signals}
-        for slot in ("morning", "afternoon", "evening"):
+        for slot in ("am", "pm"):
             items = slots.get(slot, [])
             count = len(items)
             level = "open"
@@ -781,10 +780,11 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             slot = str(item.get("slot") or "")
             level = str(item.get("level") or "open")
             count = int(item.get("task_count") or 0)
+            label = slot.upper()
             if level == "contention":
-                summaries.append(f"{slot.title()} has household contention.")
+                summaries.append(f"{label} has household contention.")
             elif level == "busy":
-                summaries.append(f"{slot.title()} is busy with {count} tasks.")
+                summaries.append(f"{label} is busy with {count} tasks.")
         return summaries
 
     def _resolve_home_power(self) -> tuple[float | None, str | None, str | None]:
@@ -1145,7 +1145,7 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             candidates.append(
                 RecommendedAction(
                     title=f"Resolve {slot} household contention early",
-                    summary=f"{slot.title()} has tasks stacked across {', '.join(people[:3])}.",
+                    summary=f"{slot.upper()} has tasks stacked across {', '.join(people[:3])}.",
                     category="chores",
                     score=81,
                     reason="household_contention",
