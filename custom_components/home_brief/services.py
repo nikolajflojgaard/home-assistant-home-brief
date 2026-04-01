@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, Supp
 from .const import DOMAIN
 
 SERVICE_GET_BRIEF = "get_brief"
+SERVICE_GET_ACTIONS = "get_actions"
 SERVICE_RESCAN = "rescan"
 
 _GET_BRIEF_SCHEMA = vol.Schema({vol.Required("entry_id"): str})
@@ -27,6 +28,21 @@ async def async_register(hass: HomeAssistant) -> None:
             "summary": data.summary,
             "insights": data.insights,
             "stats": data.stats,
+        }
+
+    async def _async_get_actions(call: ServiceCall) -> ServiceResponse:
+        entry_id = str(call.data["entry_id"])
+        coordinator = hass.data.get(DOMAIN, {}).get(entry_id)
+        if coordinator is None:
+            return {"ok": False, "error": "entry_not_found"}
+        data = coordinator.data
+        stats = data.stats or {}
+        return {
+            "ok": True,
+            "entry_id": entry_id,
+            "top_action": stats.get("top_action"),
+            "recommended_actions": stats.get("recommended_actions", []),
+            "recommended_action_count": stats.get("recommended_action_count", 0),
         }
 
     async def _async_rescan(call: ServiceCall) -> ServiceResponse:
@@ -61,6 +77,15 @@ async def async_register(hass: HomeAssistant) -> None:
             DOMAIN,
             SERVICE_GET_BRIEF,
             _async_get_brief,
+            schema=_GET_BRIEF_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_GET_ACTIONS):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_GET_ACTIONS,
+            _async_get_actions,
             schema=_GET_BRIEF_SCHEMA,
             supports_response=SupportsResponse.ONLY,
         )

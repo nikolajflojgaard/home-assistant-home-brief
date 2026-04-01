@@ -40,6 +40,7 @@ from .discovery import (
     discover_defaults,
     effective_defaults,
     find_household_chores_entity,
+    find_nikolaj_chores_entity,
     find_temperature_entity,
     find_waste_entities,
     summarize_discovery,
@@ -104,10 +105,43 @@ class BriefData:
 
 
 @dataclass(slots=True)
+class RecommendedAction:
+    title: str
+    summary: str
+    category: str
+    score: int
+    reason: str
+    why_now: str | None = None
+    confidence: float | None = None
+    time_window: str | None = None
+    entity_id: str | None = None
+
+    def as_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "title": self.title,
+            "summary": self.summary,
+            "category": self.category,
+            "score": self.score,
+            "reason": self.reason,
+        }
+        if self.why_now:
+            payload["why_now"] = self.why_now
+        if self.confidence is not None:
+            payload["confidence"] = self.confidence
+        if self.time_window:
+            payload["time_window"] = self.time_window
+        if self.entity_id:
+            payload["entity_id"] = self.entity_id
+        return payload
+
+
+@dataclass(slots=True)
 class ChoreItem:
     title: str
     date: str | None = None
     assignee_names: list[str] | None = None
+    slot: str | None = None
+
 
     def as_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {"title": self.title}
@@ -115,6 +149,8 @@ class ChoreItem:
             payload["date"] = self.date
         if self.assignee_names:
             payload["assignee_names"] = self.assignee_names
+        if self.slot:
+            payload["slot"] = self.slot
         return payload
 
     def as_text(self) -> str:
@@ -124,6 +160,8 @@ class ChoreItem:
             meta.append(self.date)
         if self.assignee_names:
             meta.append(", ".join(self.assignee_names))
+        if self.slot:
+            meta.append(self.slot)
         if meta:
             parts.append(f"({' • '.join(meta)})")
         return " ".join(parts)
@@ -385,7 +423,17 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
 
         return []
 
-    def _chore_priority(self, chore: str, index: int) -> int:
+    def _days_until(self, value: str | None) -> int | None:
+        if not value:
+            return None
+        try:
+            target = date.fromisoformat(value)
+        except ValueError:
+            return None
+        today = datetime.now().astimezone().date()
+        return (target - today).days
+
+    def _chore_priority(self, chore: str, index: int, due_date: str | None = None, assignee_names: list[str] | None = None, person_name: str | None = None) -> int:
         text = chore.lower()
         score = 100 - min(index, 10)
         urgent_terms = ("overdue", "urgent", "asap", "today", "tonight", "now", "snarest", "i dag", "nu", "hurtigst")
@@ -398,6 +446,28 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             score += 18
         elif any(term in text for term in routine_terms):
             score -= 8
+
+        days_until = self._days_until(due_date)
+        if days_until is not None:
+            if days_until < 0:
+                score += 55
+            elif days_until == 0:
+                score += 34
+            elif days_until == 1:
+                score += 18
+            elif days_until >= 4:
+                score -= min(days_until * 2, 12)
+
+        normalized_assignees = [name.casefold() for name in (assignee_names or [])]
+        if person_name and person_name.casefold() in normalized_assignees:
+            score += 16
+
+        quick_terms = ("trash", "bins", "dishwasher", "laundry", "ryd", "opvask", "skrald")
+        heavy_terms = ("garage", "shed", "deep clean", "declutter", "sort", "organize")
+        if any(term in text for term in quick_terms):
+            score += 8
+        if any(term in text for term in heavy_terms):
+            score -= 6
 
         if text.startswith(("!", "*")):
             score += 12
@@ -428,6 +498,33 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
                 seen.add(key)
                 deduped.append(normalized)
         return deduped
+
+    def _normalize_slot(self, value: Any) -> str | None:
+        text = str(value or "").strip().lower()
+        if not text:
+            return None
+        if any(token in text for token in ("morning", "morgen", "am")):
+            return "morning"
+        if any(token in text for token in ("afternoon", "middag", "eftermiddag")):
+            return "afternoon"
+        if any(token in text for token in ("evening", "night", "aften", "nat", "pm")):
+            return "evening"
+        return None
+
+    def _infer_slot(self, payload: dict[str, Any]) -> str | None:
+        direct = self._normalize_slot(
+            payload.get("slot")
+            or payload.get("time_slot")
+            or payload.get("day_part")
+            or payload.get("period")
+        )
+        if direct:
+            return direct
+
+        title_bits = " ".join(
+            str(payload.get(key) or "") for key in ("title", "name", "summary")
+        )
+        return self._normalize_slot(title_bits)
 
     def _normalize_chore_date(self, value: Any) -> str | None:
         text = str(value or "").strip()
@@ -471,6 +568,7 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
                 title=self._clean_signal_name(title),
                 date=date,
                 assignee_names=assignee_names or None,
+                slot=self._infer_slot(value),
             )
 
         if isinstance(value, str):
@@ -485,7 +583,7 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
                 if isinstance(parsed, dict):
                     return self._extract_chore_item(parsed)
             cleaned = self._clean_signal_name(text)
-            return ChoreItem(title=cleaned) if cleaned else None
+            return ChoreItem(title=cleaned, slot=self._normalize_slot(cleaned)) if cleaned else None
 
         return None
 
@@ -511,6 +609,46 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         chore = self._extract_chore_item(value)
         return [chore] if chore is not None else []
 
+    def _person_specific_chores(self, person_name: str = "Nikolaj") -> tuple[list[dict[str, Any]], str | None, str | None]:
+        entity_id = find_nikolaj_chores_entity(self.hass)
+        state = self._state_obj(entity_id)
+        if state is None:
+            return [], entity_id, None
+
+        candidates = [
+            state.attributes.get("tasks"),
+            state.attributes.get("items"),
+            state.attributes.get("next_tasks"),
+            state.attributes.get("next_3_tasks"),
+            state.attributes.get("chores"),
+            state.attributes.get("list"),
+            state.attributes.get("entries"),
+            state.state,
+        ]
+        for candidate in candidates:
+            structured_items = self._normalize_chore_items(candidate)
+            if structured_items:
+                prioritized = sorted(
+                    enumerate(structured_items),
+                    key=lambda item: self._chore_priority(
+                        item[1].as_text(),
+                        item[0],
+                        due_date=item[1].date,
+                        assignee_names=item[1].assignee_names,
+                        person_name=person_name,
+                    ),
+                    reverse=True,
+                )
+                chores = [item.as_dict() for _, item in prioritized if item.title][:5]
+                if not chores:
+                    return [], entity_id, None
+                top_task = chores[0]["title"]
+                extra_count = max(0, len(chores) - 1)
+                suffix = f" +{extra_count} more" if extra_count else ""
+                summary = f"{person_name} focus: {top_task}{suffix}."
+                return chores, entity_id, summary
+        return [], entity_id, None
+
     def _household_chores(self) -> tuple[list[dict[str, Any]], str | None, str | None]:
         entity_id = find_household_chores_entity(self.hass)
         state = self._state_obj(entity_id)
@@ -532,7 +670,12 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             if structured_items:
                 prioritized = sorted(
                     enumerate(structured_items),
-                    key=lambda item: self._chore_priority(item[1].as_text(), item[0]),
+                    key=lambda item: self._chore_priority(
+                        item[1].as_text(),
+                        item[0],
+                        due_date=item[1].date,
+                        assignee_names=item[1].assignee_names,
+                    ),
                     reverse=True,
                 )
                 chores = [item.as_dict() for _, item in prioritized if item.title][:5]
@@ -561,6 +704,88 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
                 summary = f"Household focus: {top_task}{suffix}."
                 return chores, entity_id, summary
         return [], entity_id, None
+
+    def _slot_key(self, item: dict[str, Any]) -> str:
+        slot = str(item.get("slot") or "").strip().lower()
+        if slot in {"morning", "afternoon", "evening"}:
+            return slot
+        return "anytime"
+
+    def _build_slot_summary(self, chores: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+        slots: dict[str, list[dict[str, Any]]] = {"morning": [], "afternoon": [], "evening": [], "anytime": []}
+        for chore in chores:
+            slots.setdefault(self._slot_key(chore), []).append(chore)
+        return slots
+
+    def _household_contention(self, chores: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
+        slots = self._build_slot_summary(chores)
+        signals: list[dict[str, Any]] = []
+        summaries: list[str] = []
+        for slot in ("morning", "afternoon", "evening"):
+            items = slots.get(slot, [])
+            if len(items) < 2:
+                continue
+            people: set[str] = set()
+            for item in items:
+                for name in item.get("assignee_names", []) or []:
+                    people.add(str(name))
+            if len(people) < 2:
+                continue
+            signals.append({
+                "slot": slot,
+                "task_count": len(items),
+                "people": sorted(people),
+                "titles": [str(item.get("title") or "") for item in items[:4]],
+                "kind": "household_contention",
+            })
+            summaries.append(f"{slot.title()} is crowded across the household ({len(items)} tasks, {len(people)} people).")
+        return signals, summaries
+
+    def _personal_slot_load(self, chores: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
+        load: dict[str, dict[str, int]] = {}
+        for chore in chores:
+            slot = self._slot_key(chore)
+            names = [str(name) for name in (chore.get("assignee_names") or []) if str(name).strip()]
+            if not names:
+                continue
+            for name in names:
+                person_load = load.setdefault(name, {"morning": 0, "afternoon": 0, "evening": 0, "anytime": 0, "total": 0})
+                person_load[slot] = person_load.get(slot, 0) + 1
+                person_load["total"] += 1
+        return load
+
+    def _slot_pressure(self, slots: dict[str, list[dict[str, Any]]], overlap_signals: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        pressure: list[dict[str, Any]] = []
+        overlap_map = {str(item.get("slot")): item for item in overlap_signals}
+        for slot in ("morning", "afternoon", "evening"):
+            items = slots.get(slot, [])
+            count = len(items)
+            level = "open"
+            if count >= 3:
+                level = "busy"
+            elif count >= 1:
+                level = "normal"
+            if slot in overlap_map:
+                level = "contention"
+            pressure.append({
+                "slot": slot,
+                "task_count": count,
+                "level": level,
+                "people": overlap_map.get(slot, {}).get("people", []),
+            })
+        return pressure
+
+    def _slot_pressure_summaries(self, slot_pressure: list[dict[str, Any]]) -> list[str]:
+        summaries: list[str] = []
+        for item in slot_pressure:
+            slot = str(item.get("slot") or "")
+            level = str(item.get("level") or "open")
+            count = int(item.get("task_count") or 0)
+            if level == "contention":
+                summaries.append(f"{slot.title()} has household contention.")
+            elif level == "busy":
+                summaries.append(f"{slot.title()} is busy with {count} tasks.")
+        return summaries
 
     def _resolve_home_power(self) -> tuple[float | None, str | None, str | None]:
         entity_id = self._effective_value(CONF_HOME_POWER_ENTITY)
@@ -671,6 +896,276 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             weather_stats["weather_forecast_summary"] = f"Weather outlook drops to around {cold_soon:.0f}°C soon."
 
         return scored, weather_stats
+
+    def _build_recommended_actions(
+        self,
+        *,
+        solar: float | None,
+        home_power: float | None,
+        has_solar_surplus: bool,
+        price: float | None,
+        is_home: bool | None,
+        on_lights: int,
+        humidity: float | None,
+        waste_pickups: list[dict[str, Any]],
+        household_chores: list[dict[str, Any]],
+        nikolaj_chores: list[dict[str, Any]],
+        weather_stats: dict[str, Any],
+        chores_entity: str | None,
+        nikolaj_chores_entity: str | None,
+    ) -> list[RecommendedAction]:
+        candidates: list[RecommendedAction] = []
+
+        if is_home is False and on_lights > 0:
+            candidates.append(
+                RecommendedAction(
+                    title="Turn off lights left on",
+                    summary=f"Nobody is home, but {on_lights} light{'s are' if on_lights != 1 else ' is'} still on.",
+                    category="away",
+                    score=96,
+                    reason="lights_left_on_away",
+                    why_now="This is pure waste while the house is empty.",
+                    confidence=0.96,
+                    time_window="now",
+                )
+            )
+
+        if is_home is False and home_power is not None and home_power >= float(self._configured_value(CONF_AWAY_POWER_THRESHOLD, DEFAULT_AWAY_POWER_THRESHOLD)):
+            candidates.append(
+                RecommendedAction(
+                    title="Check unusual power draw",
+                    summary=f"Nobody is home, but the house is still pulling {home_power:.0f} W.",
+                    category="away",
+                    score=94,
+                    reason="away_power_draw",
+                    why_now="Empty-house load this high is worth checking before it turns into wasted energy or a stuck device.",
+                    confidence=0.93,
+                    time_window="now",
+                    entity_id=self._effective_value(CONF_HOME_POWER_ENTITY),
+                )
+            )
+
+        if waste_pickups:
+            today = [item for item in waste_pickups if item.get("days", 99) <= 0]
+            tomorrow = [item for item in waste_pickups if item.get("days") == 1]
+            if today:
+                names = ", ".join(item["name"] for item in today[:2])
+                candidates.append(
+                    RecommendedAction(
+                        title="Handle waste pickup today",
+                        summary=f"{names} {'is' if len(today) == 1 else 'are'} due today.",
+                        category="waste",
+                        score=93,
+                        reason="waste_today",
+                        why_now="Miss it today and it stops being a reminder and becomes household drag.",
+                        confidence=0.95,
+                        time_window="today",
+                    )
+                )
+                if is_home is False:
+                    candidates.append(
+                        RecommendedAction(
+                            title="Bundle waste with your next return or exit",
+                            summary=f"{names} {'needs' if len(today) == 1 else 'need'} handling and the house already knows you are out.",
+                            category="waste",
+                            score=84,
+                            reason="waste_exit_bundle",
+                            why_now="This is easiest when bundled with movement instead of becoming a separate trip.",
+                            confidence=0.79,
+                            time_window="next trip",
+                        )
+                    )
+            elif tomorrow:
+                names = ", ".join(item["name"] for item in tomorrow[:2])
+                candidates.append(
+                    RecommendedAction(
+                        title="Prep bins for tomorrow",
+                        summary=f"{names} {'goes' if len(tomorrow) == 1 else 'go'} out tomorrow.",
+                        category="waste",
+                        score=80,
+                        reason="waste_tomorrow",
+                        why_now="Easy win if you do it before tonight gets noisy.",
+                        confidence=0.83,
+                        time_window="today",
+                    )
+                )
+
+        if has_solar_surplus and solar is not None and home_power is not None:
+            candidates.append(
+                RecommendedAction(
+                    title="Run a flexible load now",
+                    summary=f"Solar is comfortably above house load ({solar:.0f} W vs {home_power:.0f} W).",
+                    category="energy",
+                    score=91,
+                    reason="solar_surplus",
+                    why_now="This is a cheap consumption window and surplus gets wasted if you ignore it.",
+                    confidence=0.92,
+                    time_window="next 60–90 min",
+                    entity_id=self._effective_value(CONF_SOLAR_POWER_ENTITY),
+                )
+            )
+        elif price is not None and price <= 1.0:
+            candidates.append(
+                RecommendedAction(
+                    title="Use the cheap power window",
+                    summary=f"Power is cheap right now ({price:.2f}). Push flexible loads into this window.",
+                    category="energy",
+                    score=67,
+                    reason="cheap_power",
+                    why_now="No need to pay more later for something flexible.",
+                    confidence=0.74,
+                    time_window="current price window",
+                    entity_id=self._effective_value(CONF_POWER_PRICE_ENTITY),
+                )
+            )
+        elif price is not None and price >= 3.0:
+            candidates.append(
+                RecommendedAction(
+                    title="Avoid flexible heavy loads for now",
+                    summary=f"Power is expensive right now ({price:.2f}). Delay anything optional.",
+                    category="energy",
+                    score=76,
+                    reason="expensive_power",
+                    why_now="This is the idiot-tax window for optional energy usage.",
+                    confidence=0.82,
+                    time_window="until prices ease",
+                    entity_id=self._effective_value(CONF_POWER_PRICE_ENTITY),
+                )
+            )
+
+        if humidity is not None and humidity >= float(self._configured_value(CONF_HUMIDITY_THRESHOLD, DEFAULT_HUMIDITY_THRESHOLD)):
+            candidates.append(
+                RecommendedAction(
+                    title="Ventilate now",
+                    summary=f"Humidity is still elevated at {humidity:.0f}%.",
+                    category="comfort",
+                    score=79,
+                    reason="high_humidity",
+                    why_now="Leaving humidity high turns a small comfort issue into a stale-house problem.",
+                    confidence=0.85,
+                    time_window="now",
+                    entity_id=self._effective_value(CONF_HUMIDITY_ENTITY),
+                )
+            )
+
+        if nikolaj_chores:
+            first = nikolaj_chores[0]
+            title = str(first.get("title") or "Next Nikolaj chore").strip()
+            date_text = str(first.get("date") or "").strip()
+            summary = f"{title} is one of Nikolaj's next tasks." if not date_text else f"{title} is one of Nikolaj's next tasks — due {date_text}."
+            bundle_title = title.casefold()
+            if has_solar_surplus and any(token in bundle_title for token in ("dishwasher", "laundry", "washing", "dryer", "opvask")):
+                summary = f"{title} lines up with a solar surplus window right now."
+            candidates.append(
+                RecommendedAction(
+                    title=f"Do {title}",
+                    summary=summary,
+                    category="chores",
+                    score=78,
+                    reason="nikolaj_chore",
+                    why_now="It is explicitly in Nikolaj's queue, so this is more actionable than a generic household task.",
+                    confidence=0.86,
+                    time_window="today",
+                    entity_id=nikolaj_chores_entity or chores_entity,
+                )
+            )
+
+        if household_chores:
+            first = household_chores[0]
+            title = str(first.get("title") or "Next household chore").strip()
+            date_text = str(first.get("date") or "").strip()
+            summary = title if not date_text else f"{title} is the top visible household task — due {date_text}."
+            candidates.append(
+                RecommendedAction(
+                    title=f"Do {title}",
+                    summary=summary,
+                    category="chores",
+                    score=72,
+                    reason="top_household_chore",
+                    why_now="This is the clearest visible household task if you want to reduce background drag.",
+                    confidence=0.72,
+                    time_window="today",
+                    entity_id=chores_entity,
+                )
+            )
+            if len(household_chores) >= 3:
+                candidates.append(
+                    RecommendedAction(
+                        title="Clear the household queue before it compounds",
+                        summary=f"{len(household_chores)} chores are already visible in the next-up queue.",
+                        category="chores",
+                        score=60,
+                        reason="household_queue",
+                        why_now="Small queued tasks get annoying fast when nobody clears the front of the line.",
+                        confidence=0.68,
+                        time_window="today",
+                        entity_id=chores_entity,
+                    )
+                )
+
+        weather_forecast_summary = str(weather_stats.get("weather_forecast_summary") or "")
+        if weather_forecast_summary and "rough" in weather_forecast_summary.lower():
+            candidates.append(
+                RecommendedAction(
+                    title="Use the dry window while it exists",
+                    summary=weather_forecast_summary,
+                    category="weather",
+                    score=58,
+                    reason="weather_shift",
+                    why_now="Weather timing matters more than the task itself if conditions are about to turn.",
+                    confidence=0.62,
+                    time_window="before forecast turns",
+                    entity_id=self._effective_value(CONF_WEATHER_ENTITY),
+                )
+            )
+
+        if household_chores and is_home is False:
+            first = household_chores[0]
+            title = str(first.get("title") or "Next household chore").strip()
+            if any(token in title.casefold() for token in ("trash", "bins", "package", "parcel", "pickup", "skrald")):
+                candidates.append(
+                    RecommendedAction(
+                        title=f"Bundle {title} with your next trip",
+                        summary=f"{title} looks like an errand-style chore rather than something worth a dedicated trip.",
+                        category="chores",
+                        score=73,
+                        reason="exit_bundle",
+                        why_now="Bundling low-friction chores with movement is cheaper than creating a separate task later.",
+                        confidence=0.76,
+                        time_window="next trip",
+                        entity_id=chores_entity,
+                    )
+                )
+
+        overlap_signals, _overlap_summaries = self._household_contention(household_chores)
+        if overlap_signals:
+            first_overlap = overlap_signals[0]
+            slot = str(first_overlap.get("slot") or "that slot")
+            people = first_overlap.get("people") or []
+            candidates.append(
+                RecommendedAction(
+                    title=f"Resolve {slot} household contention early",
+                    summary=f"{slot.title()} has tasks stacked across {', '.join(people[:3])}.",
+                    category="chores",
+                    score=81,
+                    reason="household_contention",
+                    why_now="Cross-household slot pressure is where chores quietly turn into coordination failure.",
+                    confidence=0.84,
+                    time_window=slot,
+                    entity_id=chores_entity,
+                )
+            )
+
+        deduped: list[RecommendedAction] = []
+        seen: set[tuple[str, str]] = set()
+        for item in sorted(candidates, key=lambda candidate: candidate.score, reverse=True):
+            key = (item.category, item.title.casefold())
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(item)
+
+        return deduped[:3]
 
     def _source_details(self) -> dict[str, dict[str, Any]]:
         configured = self._configured_payload()
@@ -835,8 +1330,20 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             scored.append(waste_pickup_summary)
 
         household_chores, chores_entity, chores_summary = self._household_chores()
+        nikolaj_chores, nikolaj_chores_entity, nikolaj_chores_summary = self._person_specific_chores()
+        household_chore_slots = self._build_slot_summary(household_chores)
+        household_overlap_signals, household_overlap_summaries = self._household_contention(household_chores)
+        personal_slot_load = self._personal_slot_load(household_chores)
+        household_slot_pressure = self._slot_pressure(household_chore_slots, household_overlap_signals)
+        household_slot_pressure_summaries = self._slot_pressure_summaries(household_slot_pressure)
         if chores_summary:
             scored.append((74, chores_summary))
+        if nikolaj_chores_summary:
+            scored.append((78, nikolaj_chores_summary))
+        for summary_text in household_overlap_summaries:
+            scored.append((83, summary_text))
+        for summary_text in household_slot_pressure_summaries:
+            scored.append((69, summary_text))
 
         missing_entities = self._missing_entities()
         if missing_entities:
@@ -866,6 +1373,23 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             seen.add(text)
             deduped.append(text)
 
+        recommended_actions = self._build_recommended_actions(
+            solar=solar,
+            home_power=home_power,
+            has_solar_surplus=has_solar_surplus,
+            price=price,
+            is_home=is_home,
+            on_lights=on_lights,
+            humidity=humidity,
+            waste_pickups=waste_pickups,
+            household_chores=household_chores,
+            nikolaj_chores=nikolaj_chores,
+            weather_stats=weather_stats,
+            chores_entity=chores_entity,
+            nikolaj_chores_entity=nikolaj_chores_entity,
+        )
+        top_action = recommended_actions[0] if recommended_actions else None
+
         source_details = self._source_details()
         source_summary, explicit_source_count, autofilled_source_count = self._source_summary(source_details)
         effective_config = self._effective_config()
@@ -885,6 +1409,15 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             "household_chores_count": len(household_chores),
             "household_chores_entity": chores_entity,
             "household_chores_summary": chores_summary,
+            "nikolaj_chores": nikolaj_chores,
+            "nikolaj_chores_count": len(nikolaj_chores),
+            "nikolaj_chores_entity": nikolaj_chores_entity,
+            "nikolaj_chores_summary": nikolaj_chores_summary,
+            "household_chore_slots": household_chore_slots,
+            "household_overlap_signals": household_overlap_signals,
+            "household_overlap_count": len(household_overlap_signals),
+            "household_slot_pressure": household_slot_pressure,
+            "personal_slot_load": personal_slot_load,
             "waste_pickups": waste_pickups,
             "waste_pickup_count": len(waste_pickups),
             "waste_pickup_summary": waste_pickup_summary[1] if waste_pickup_summary else None,
@@ -899,6 +1432,12 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             "dryer_done": dryer_state.done,
             "dryer_done_minutes": dryer_done_minutes,
             "solar_surplus": has_solar_surplus,
+            "top_action": top_action.as_dict() if top_action else None,
+            "top_action_score": top_action.score if top_action else None,
+            "top_action_category": top_action.category if top_action else None,
+            "top_action_reason": top_action.reason if top_action else None,
+            "recommended_actions": [item.as_dict() for item in recommended_actions],
+            "recommended_action_count": len(recommended_actions),
             "configured_entities": len(self._configured_entities()),
             "missing_entities": missing_entities,
             "missing_entity_count": len(missing_entities),

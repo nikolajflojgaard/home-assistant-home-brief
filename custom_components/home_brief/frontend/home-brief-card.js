@@ -47,10 +47,13 @@ class HomeBriefCard extends HTMLElement {
   }
 
   _tone(attrs) {
+    const solar = Number(attrs.solar_power ?? 0);
+    const home = Number(attrs.home_power ?? 0);
     if ((attrs.missing_entity_count || 0) > 0) return 'warning';
     if ((attrs.power_price ?? 0) >= 3) return 'warning';
+    if (solar > 0 && home > 0 && solar < home) return 'danger';
     if ((attrs.waste_pickup_count ?? 0) > 0 || attrs.washer_done || attrs.dryer_done) return 'accent';
-    if ((attrs.solar_power ?? 0) > (attrs.home_power ?? Infinity) && (attrs.solar_power ?? 0) > 0) return 'good';
+    if (solar > home && solar > 0) return 'good';
     return 'neutral';
   }
 
@@ -62,7 +65,10 @@ class HomeBriefCard extends HTMLElement {
       tiles.push({ label: 'Price', value: this._formatNumber(attrs.power_price, 2), unit: '', tone });
     }
     if (attrs.solar_power !== undefined && attrs.solar_power !== null) {
-      tiles.push({ label: 'Solar', value: this._formatNumber(attrs.solar_power), unit: 'W', tone: attrs.solar_surplus ? 'good' : 'neutral' });
+      const solar = Number(attrs.solar_power ?? 0);
+      const home = Number(attrs.home_power ?? 0);
+      const tone = attrs.solar_surplus ? 'good' : (solar > 0 && home > 0 && solar < home ? 'danger' : 'neutral');
+      tiles.push({ label: 'Solar', value: this._formatNumber(attrs.solar_power), unit: 'W', tone });
     }
     if (attrs.home_power_meaningful && attrs.home_power !== undefined && attrs.home_power !== null) {
       tiles.push({ label: 'Home', value: this._formatNumber(attrs.home_power), unit: 'W', tone: 'neutral' });
@@ -237,8 +243,58 @@ class HomeBriefCard extends HTMLElement {
     `;
   }
 
+  _actionPanel(attrs) {
+    const topAction = attrs.top_action && typeof attrs.top_action === 'object' ? attrs.top_action : null;
+    const recommended = Array.isArray(attrs.recommended_actions) ? attrs.recommended_actions.filter((item) => item && typeof item === 'object') : [];
+    if (!topAction && !recommended.length) return '';
+
+    const topSummary = topAction?.summary ? `<div class="action-summary">${this._escapeHtml(topAction.summary)}</div>` : '';
+    const topMeta = [topAction?.category, topAction?.score ? `${topAction.score}` : null].filter(Boolean).join(' • ');
+    const topSubMeta = [topAction?.why_now, topAction?.time_window ? `Window: ${topAction.time_window}` : null].filter(Boolean);
+
+    return `
+      <section class="action-panel">
+        <div class="action-panel-header">
+          <div>
+            <div class="action-eyebrow">Best move now</div>
+            <div class="action-title">${this._escapeHtml(topAction?.title || 'No strong action right now')}</div>
+            ${topSummary}
+            ${topSubMeta.length ? `<div class="action-why">${this._escapeHtml(topSubMeta.join(' • '))}</div>` : ''}
+          </div>
+          ${topAction ? `<div class="action-score">${this._escapeHtml(topMeta)}</div>` : ''}
+        </div>
+        ${recommended.length ? `
+          <div class="action-list">
+            ${recommended.slice(0, 3).map((item, index) => `
+              <div class="action-item ${index === 0 ? 'action-item-primary' : ''}">
+                <div class="action-rank">${index + 1}</div>
+                <div class="action-copy">
+                  <div class="action-item-title">${this._escapeHtml(item.title || '')}</div>
+                  ${item.summary ? `<div class="action-item-summary">${this._escapeHtml(item.summary)}</div>` : ''}
+                  ${(item.why_now || item.time_window || item.confidence !== undefined) ? `<div class="action-item-meta">${this._escapeHtml([
+                    item.why_now || null,
+                    item.time_window ? `Window: ${item.time_window}` : null,
+                    item.confidence !== undefined ? `Confidence: ${Math.round(Number(item.confidence) * 100)}%` : null,
+                  ].filter(Boolean).join(' • '))}</div>` : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+      </section>
+    `;
+  }
+
   _focusItems(attrs) {
     const items = [];
+
+    if ((attrs.nikolaj_chores_count ?? 0) > 0) {
+      items.push({
+        title: attrs.nikolaj_chores_summary || `${attrs.nikolaj_chores_count} Nikolaj task${attrs.nikolaj_chores_count === 1 ? '' : 's'} queued`,
+        meta: 'Nikolaj focus',
+        tone: 'accent',
+      });
+    }
 
     if ((attrs.household_chores_count ?? 0) > 0) {
       items.push({
@@ -302,6 +358,31 @@ class HomeBriefCard extends HTMLElement {
             <span class="signal-text">${this._escapeHtml(item)}</span>
           </div>
         `).join('')}
+      </section>
+    `;
+  }
+
+  _slotPanel(attrs) {
+    const pressure = Array.isArray(attrs.household_slot_pressure) ? attrs.household_slot_pressure : [];
+    if (!pressure.length) return '';
+
+    const rows = pressure.filter((row) => Number(row.task_count || 0) > 0);
+    if (!rows.length) return '';
+
+    return `
+      <section class="slot-panel">
+        <div class="focus-title">Today by slot</div>
+        <div class="slot-list">
+          ${rows.map((row) => `
+            <div class="slot-row ${row.level === 'contention' || row.level === 'busy' ? 'slot-row-busy' : ''}">
+              <div>
+                <div class="slot-name">${this._escapeHtml(row.slot || '')}</div>
+                ${Array.isArray(row.people) && row.people.length ? `<div class="slot-people">${this._escapeHtml(row.people.join(', '))}</div>` : ''}
+              </div>
+              <div class="slot-count">${this._escapeHtml(row.level || 'normal')} · ${row.task_count} task${row.task_count === 1 ? '' : 's'}</div>
+            </div>
+          `).join('')}
+        </div>
       </section>
     `;
   }
@@ -379,7 +460,11 @@ class HomeBriefCard extends HTMLElement {
           </section>
         ` : ''}
 
+        ${this._actionPanel(attrs)}
+
         ${this._focusPanel(attrs)}
+
+        ${this._slotPanel(attrs)}
 
         ${filteredInsights.length && this._config.show_secondary ? this._signalRows(filteredInsights) : ''}
 
@@ -419,6 +504,9 @@ class HomeBriefCard extends HTMLElement {
       }
       .tone-warning {
         box-shadow: inset 0 3px 0 var(--warning-color);
+      }
+      .tone-danger {
+        box-shadow: inset 0 3px 0 var(--error-color);
       }
       .tone-good {
         box-shadow: inset 0 3px 0 var(--success-color);
@@ -468,6 +556,10 @@ class HomeBriefCard extends HTMLElement {
       .live-dot.tone-warning {
         background: var(--warning-color);
         box-shadow: 0 0 0 4px color-mix(in srgb, var(--warning-color) 18%, transparent);
+      }
+      .live-dot.tone-danger {
+        background: var(--error-color);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--error-color) 18%, transparent);
       }
       .live-dot.tone-good {
         background: var(--success-color);
@@ -531,6 +623,10 @@ class HomeBriefCard extends HTMLElement {
       .metric-tile.tone-warning {
         background: color-mix(in srgb, var(--warning-color) 11%, var(--card-background-color));
         border-color: color-mix(in srgb, var(--warning-color) 22%, transparent);
+      }
+      .metric-tile.tone-danger {
+        background: color-mix(in srgb, var(--error-color) 10%, var(--card-background-color));
+        border-color: color-mix(in srgb, var(--error-color) 22%, transparent);
       }
       .metric-tile.tone-good {
         background: color-mix(in srgb, var(--success-color) 11%, var(--card-background-color));
@@ -748,6 +844,104 @@ class HomeBriefCard extends HTMLElement {
         line-height: 1.45;
         font-size: 13px;
       }
+      .action-panel {
+        margin-top: 16px;
+        padding: 14px;
+        border-radius: 22px;
+        background: color-mix(in srgb, var(--primary-color) 8%, var(--card-background-color));
+        border: 1px solid color-mix(in srgb, var(--primary-color) 18%, transparent);
+      }
+      .action-panel-header {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .action-eyebrow {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--secondary-text-color);
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+      .action-title {
+        font-size: 20px;
+        line-height: 1.2;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      .action-summary {
+        margin-top: 6px;
+        font-size: 13px;
+        line-height: 1.45;
+        color: var(--secondary-text-color);
+      }
+      .action-why {
+        margin-top: 8px;
+        font-size: 12px;
+        line-height: 1.45;
+        color: var(--secondary-text-color);
+      }
+      .action-score {
+        flex: 0 0 auto;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--card-background-color) 76%, transparent);
+        border: 1px solid color-mix(in srgb, var(--divider-color) 42%, transparent);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        color: var(--secondary-text-color);
+      }
+      .action-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .action-item {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+        padding: 10px 12px;
+        border-radius: 16px;
+        background: color-mix(in srgb, var(--card-background-color) 78%, transparent);
+        border: 1px solid color-mix(in srgb, var(--divider-color) 38%, transparent);
+      }
+      .action-item-primary {
+        background: color-mix(in srgb, var(--card-background-color) 88%, transparent);
+      }
+      .action-rank {
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: color-mix(in srgb, var(--primary-color) 12%, var(--card-background-color));
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--secondary-text-color);
+      }
+      .action-item-title {
+        font-size: 14px;
+        line-height: 1.35;
+        font-weight: 640;
+      }
+      .action-item-summary {
+        margin-top: 3px;
+        font-size: 12px;
+        line-height: 1.4;
+        color: var(--secondary-text-color);
+      }
+      .action-item-meta {
+        margin-top: 5px;
+        font-size: 11px;
+        line-height: 1.4;
+        color: var(--secondary-text-color);
+      }
       .focus-panel {
         margin-top: 16px;
       }
@@ -787,6 +981,41 @@ class HomeBriefCard extends HTMLElement {
         color: var(--secondary-text-color);
         font-size: 12px;
         line-height: 1.35;
+      }
+      .slot-panel {
+        margin-top: 16px;
+      }
+      .slot-list {
+        display: grid;
+        gap: 8px;
+      }
+      .slot-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 16px;
+        background: color-mix(in srgb, var(--secondary-background-color) 62%, transparent);
+        border: 1px solid color-mix(in srgb, var(--divider-color) 42%, transparent);
+      }
+      .slot-row-busy {
+        background: color-mix(in srgb, var(--warning-color) 8%, var(--card-background-color));
+        border-color: color-mix(in srgb, var(--warning-color) 18%, transparent);
+      }
+      .slot-name {
+        font-size: 13px;
+        text-transform: capitalize;
+        font-weight: 620;
+      }
+      .slot-count {
+        color: var(--secondary-text-color);
+        font-size: 12px;
+      }
+      .slot-people {
+        margin-top: 3px;
+        color: var(--secondary-text-color);
+        font-size: 11px;
       }
       .signal-stack {
         display: grid;

@@ -41,6 +41,36 @@ async def ws_get_brief(
     )
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "home_brief/get_actions",
+        vol.Required("entry_id"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_get_actions(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    entry_id = msg["entry_id"]
+    coordinator = hass.data.get(DOMAIN, {}).get(entry_id)
+    if coordinator is None:
+        connection.send_error(msg["id"], "entry_not_found", f"No entry found for entry_id={entry_id}")
+        return
+    data = coordinator.data
+    stats = data.stats or {}
+    connection.send_result(
+        msg["id"],
+        {
+            "entry_id": entry_id,
+            "top_action": stats.get("top_action"),
+            "recommended_actions": stats.get("recommended_actions", []),
+            "recommended_action_count": stats.get("recommended_action_count", 0),
+        },
+    )
+
+
 @websocket_api.websocket_command({vol.Required("type"): "home_brief/list_entries"})
 @websocket_api.async_response
 async def ws_list_entries(
@@ -55,4 +85,5 @@ async def ws_list_entries(
 
 def async_register(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_get_brief)
+    websocket_api.async_register_command(hass, ws_get_actions)
     websocket_api.async_register_command(hass, ws_list_entries)

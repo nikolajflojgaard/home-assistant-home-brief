@@ -41,6 +41,10 @@ PREFERRED_TEMPERATURE_ENTITY_IDS: tuple[str, ...] = (
 PREFERRED_HOUSEHOLD_CHORES_ENTITY_IDS: tuple[str, ...] = (
     "sensor.household_chores_next_3_tasks",
 )
+PREFERRED_NIKOLAJ_CHORES_ENTITY_IDS: tuple[str, ...] = (
+    "sensor.household_chores_nikolaj_next_3_tasks_2",
+    "sensor.household_chores_nikolaj_next_3_tasks",
+)
 
 
 def _norm(text: str) -> str:
@@ -324,6 +328,21 @@ def find_household_chores_entity(hass: HomeAssistant) -> str | None:
         states,
         domains=("sensor",),
         include=("household chores", "chores", "tasks", "todo", "to-do"),
+        exclude=("completed", "done", "history", "count", "overdue", "remaining"),
+    )
+
+
+def find_nikolaj_chores_entity(hass: HomeAssistant) -> str | None:
+    """Return a best-effort Nikolaj-specific chores sensor."""
+    preferred = _find_preferred_entity(hass, PREFERRED_NIKOLAJ_CHORES_ENTITY_IDS)
+    if preferred:
+        return preferred
+
+    states = list(hass.states.async_all())
+    return _find_best(
+        states,
+        domains=("sensor",),
+        include=("nikolaj", "household chores", "chores", "tasks", "todo", "to-do"),
         exclude=("completed", "done", "history", "count", "overdue", "remaining"),
     )
 

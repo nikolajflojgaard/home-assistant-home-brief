@@ -9,6 +9,17 @@ get_brief:
       selector:
         text:
 
+get_actions:
+  name: Get actions
+  description: Return the current top action and recommended actions from Home Brief.
+  target:
+    entity: []
+  fields:
+    entry_id:
+      required: true
+      selector:
+        text:
+
 rescan:
   name: Rescan Home Assistant
   description: Re-run Home Brief discovery so missing fields can pick up newly available entities without overwriting explicit user selections.

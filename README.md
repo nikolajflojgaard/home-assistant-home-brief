@@ -40,6 +40,7 @@ It is intentionally opinionated. The goal is useful signal, not another bloated 
 - prioritized household chores next-up summary
 - weather-aware leave-home and ventilation hints from auto-discovered weather entities
 - missing configured source entities
+- recommended action layer with top action + up to 3 suggested next moves
 
 ## Installation
 
@@ -124,6 +125,15 @@ The summary sensor exposes useful attributes including:
 - `household_chores_count`
 - `household_chores_entity`
 - `household_chores_summary`
+- `nikolaj_chores`
+- `nikolaj_chores_count`
+- `nikolaj_chores_entity`
+- `nikolaj_chores_summary`
+- `household_chore_slots`
+- `household_overlap_signals`
+- `household_overlap_count`
+- `household_slot_pressure`
+- `personal_slot_load`
 - `weather_entity`
 - `weather_state`
 - `weather_temperature`
@@ -140,6 +150,13 @@ The summary sensor exposes useful attributes including:
 - `washer_done_minutes`
 - `dryer_done_minutes`
 - `solar_surplus`
+- `top_action`
+- `top_action_score`
+- `top_action_category`
+- `top_action_reason`
+- `recommended_actions`
+- action metadata inside `top_action` / `recommended_actions` now includes `why_now`, `confidence`, and `time_window` when available
+- `recommended_action_count`
 - `missing_entity_count`
 - `missing_entities`
 - `discovery_matched_count`
@@ -185,6 +202,7 @@ Card behavior:
 
 - opens more-info on click
 - highlights warnings when configured source entities are missing
+- shows a dedicated **Best move now** action block when `top_action` / `recommended_actions` exist
 - presents price / solar / home load / indoor temperature / outdoor temperature / humidity as cleaner metric tiles instead of loose chip clutter
 - gives the top insight stronger visual priority with clearer product-style spacing and typography
 - groups chores and waste pickups into a dedicated agenda column with calmer nested panels
