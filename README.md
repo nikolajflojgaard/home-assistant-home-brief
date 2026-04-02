@@ -108,6 +108,7 @@ For this real-world setup, indoor temperature discovery explicitly prefers `sens
 Household chores are also auto-detected with a strong preference for `sensor.household_chores_next_3_tasks`.
 If the upstream Household Chores integration provides explicit task `slot` values (`am|pm`), Home Brief uses those directly for timing pressure and household contention instead of relying on heuristics.
 When solar output is `0 W`, the Solar metric tile is hidden instead of showing a dead/neutral tile.
+The card now prioritizes `Next up` above action suggestions, includes near-term waste in `Next up`, shows actual task titles in `Today by slot`, and demotes the old oversized `Best move now` treatment into a smaller `Suggested move` block.
 
 ## Entities created
 

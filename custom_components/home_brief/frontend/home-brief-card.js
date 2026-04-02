@@ -247,42 +247,18 @@ class HomeBriefCard extends HTMLElement {
 
   _actionPanel(attrs) {
     const topAction = attrs.top_action && typeof attrs.top_action === 'object' ? attrs.top_action : null;
-    const recommended = Array.isArray(attrs.recommended_actions) ? attrs.recommended_actions.filter((item) => item && typeof item === 'object') : [];
-    if (!topAction && !recommended.length) return '';
+    if (!topAction) return '';
 
-    const topSummary = topAction?.summary ? `<div class="action-summary">${this._escapeHtml(topAction.summary)}</div>` : '';
-    const topMeta = [topAction?.category, topAction?.score ? `${topAction.score}` : null].filter(Boolean).join(' • ');
-    const topSubMeta = [topAction?.why_now, topAction?.time_window ? `Window: ${topAction.time_window}` : null].filter(Boolean);
+    const meta = [topAction?.time_window ? `Window: ${topAction.time_window}` : null, topAction?.why_now || null]
+      .filter(Boolean)
+      .join(' • ');
 
     return `
-      <section class="action-panel">
-        <div class="action-panel-header">
-          <div>
-            <div class="action-eyebrow">Best move now</div>
-            <div class="action-title">${this._escapeHtml(topAction?.title || 'No strong action right now')}</div>
-            ${topSummary}
-            ${topSubMeta.length ? `<div class="action-why">${this._escapeHtml(topSubMeta.join(' • '))}</div>` : ''}
-          </div>
-          ${topAction ? `<div class="action-score">${this._escapeHtml(topMeta)}</div>` : ''}
-        </div>
-        ${recommended.length ? `
-          <div class="action-list">
-            ${recommended.slice(0, 3).map((item, index) => `
-              <div class="action-item ${index === 0 ? 'action-item-primary' : ''}">
-                <div class="action-rank">${index + 1}</div>
-                <div class="action-copy">
-                  <div class="action-item-title">${this._escapeHtml(item.title || '')}</div>
-                  ${item.summary ? `<div class="action-item-summary">${this._escapeHtml(item.summary)}</div>` : ''}
-                  ${(item.why_now || item.time_window || item.confidence !== undefined) ? `<div class="action-item-meta">${this._escapeHtml([
-                    item.why_now || null,
-                    item.time_window ? `Window: ${item.time_window}` : null,
-                    item.confidence !== undefined ? `Confidence: ${Math.round(Number(item.confidence) * 100)}%` : null,
-                  ].filter(Boolean).join(' • '))}</div>` : ''}
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        ` : ''}
+      <section class="action-panel compact">
+        <div class="action-eyebrow">Suggested move</div>
+        <div class="action-inline">${this._escapeHtml(topAction.title || 'No strong move right now')}</div>
+        ${topAction.summary ? `<div class="action-summary">${this._escapeHtml(topAction.summary)}</div>` : ''}
+        ${meta ? `<div class="action-why">${this._escapeHtml(meta)}</div>` : ''}
       </section>
     `;
   }
@@ -306,7 +282,19 @@ class HomeBriefCard extends HTMLElement {
       });
     }
 
-    if ((attrs.waste_pickup_count ?? 0) > 0) {
+    const wastePickups = Array.isArray(attrs.waste_pickups) ? attrs.waste_pickups : [];
+    const nearWaste = wastePickups.filter((item) => Number(item?.days ?? 99) <= 2);
+    if (nearWaste.length) {
+      const first = nearWaste[0] || {};
+      const name = String(first.name || 'Affald');
+      const days = Number(first.days ?? 99);
+      const when = days <= 0 ? '0 dage' : `+${days} dag${days === 1 ? '' : 'e'}`;
+      items.push({
+        title: `Affald: ${name}`,
+        meta: when,
+        tone: 'warning',
+      });
+    } else if ((attrs.waste_pickup_count ?? 0) > 0) {
       items.push({
         title: attrs.waste_pickup_summary || `${attrs.waste_pickup_count} pickup${attrs.waste_pickup_count === 1 ? '' : 's'} coming up`,
         meta: 'Waste & recycling',
@@ -366,6 +354,7 @@ class HomeBriefCard extends HTMLElement {
 
   _slotPanel(attrs) {
     const pressure = Array.isArray(attrs.household_slot_pressure) ? attrs.household_slot_pressure : [];
+    const slots = attrs.household_chore_slots && typeof attrs.household_chore_slots === 'object' ? attrs.household_chore_slots : {};
     if (!pressure.length) return '';
 
     const rows = pressure.filter((row) => Number(row.task_count || 0) > 0);
@@ -375,15 +364,20 @@ class HomeBriefCard extends HTMLElement {
       <section class="slot-panel">
         <div class="focus-title">Today by slot</div>
         <div class="slot-list">
-          ${rows.map((row) => `
-            <div class="slot-row ${row.level === 'contention' || row.level === 'busy' ? 'slot-row-busy' : ''}">
-              <div>
-                <div class="slot-name">${this._escapeHtml(row.slot || '')}</div>
-                ${Array.isArray(row.people) && row.people.length ? `<div class="slot-people">${this._escapeHtml(row.people.join(', '))}</div>` : ''}
+          ${rows.map((row) => {
+            const key = String(row.slot || '').toLowerCase();
+            const items = Array.isArray(slots[key]) ? slots[key].slice(0, 3) : [];
+            return `
+              <div class="slot-row ${row.level === 'contention' || row.level === 'busy' ? 'slot-row-busy' : ''}">
+                <div>
+                  <div class="slot-name">${this._escapeHtml((row.slot || '').toUpperCase())}</div>
+                  ${items.length ? `<div class="slot-task-list">${items.map((item) => this._escapeHtml([item.title || '', Array.isArray(item.assignee_names) && item.assignee_names.length ? item.assignee_names.join(', ') : ''].filter(Boolean).join(' — '))).join(' · ')}</div>` : ''}
+                  ${Array.isArray(row.people) && row.people.length ? `<div class="slot-people">${this._escapeHtml(row.people.join(', '))}</div>` : ''}
+                </div>
+                <div class="slot-count">${this._escapeHtml(row.level || 'normal')} · ${row.task_count} task${row.task_count === 1 ? '' : 's'}</div>
               </div>
-              <div class="slot-count">${this._escapeHtml(row.level || 'normal')} · ${row.task_count} task${row.task_count === 1 ? '' : 's'}</div>
-            </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>
       </section>
     `;
@@ -462,11 +456,11 @@ class HomeBriefCard extends HTMLElement {
           </section>
         ` : ''}
 
-        ${this._actionPanel(attrs)}
-
         ${this._focusPanel(attrs)}
 
         ${this._slotPanel(attrs)}
+
+        ${this._actionPanel(attrs)}
 
         ${filteredInsights.length && this._config.show_secondary ? this._signalRows(filteredInsights) : ''}
 
@@ -853,6 +847,10 @@ class HomeBriefCard extends HTMLElement {
         background: color-mix(in srgb, var(--primary-color) 8%, var(--card-background-color));
         border: 1px solid color-mix(in srgb, var(--primary-color) 18%, transparent);
       }
+      .action-panel.compact {
+        padding: 12px 14px;
+        border-radius: 18px;
+      }
       .action-panel-header {
         display: flex;
         align-items: start;
@@ -872,6 +870,11 @@ class HomeBriefCard extends HTMLElement {
         line-height: 1.2;
         font-weight: 700;
         letter-spacing: -0.02em;
+      }
+      .action-inline {
+        font-size: 15px;
+        line-height: 1.35;
+        font-weight: 700;
       }
       .action-summary {
         margin-top: 6px;
@@ -1018,6 +1021,12 @@ class HomeBriefCard extends HTMLElement {
         margin-top: 3px;
         color: var(--secondary-text-color);
         font-size: 11px;
+      }
+      .slot-task-list {
+        margin-top: 4px;
+        color: var(--primary-text-color);
+        font-size: 12px;
+        line-height: 1.45;
       }
       .signal-stack {
         display: grid;
