@@ -387,10 +387,12 @@ class HomeBriefCard extends HTMLElement {
   _morningBriefPanel(attrs) {
     const lines = Array.isArray(attrs.morning_brief_top3) ? attrs.morning_brief_top3.filter(Boolean).slice(0, 3) : [];
     if (!lines.length) return '';
+    const meta = attrs.morning_brief_meta ? `<div class="morning-brief-meta">${this._escapeHtml(attrs.morning_brief_meta)}</div>` : '';
 
     return `
       <section class="morning-brief-panel">
         <div class="focus-title">Morning brief</div>
+        ${meta}
         <div class="morning-brief-list">
           ${lines.map((line, index) => `
             <div class="morning-brief-item ${index === 0 ? 'morning-brief-item-primary' : ''}">
@@ -1066,6 +1068,12 @@ class HomeBriefCard extends HTMLElement {
         border-radius: 20px;
         border: 1px solid color-mix(in srgb, var(--primary-color) 14%, transparent);
         background: color-mix(in srgb, var(--primary-color) 5%, var(--card-background-color));
+      }
+      .morning-brief-meta {
+        margin-top: 4px;
+        color: var(--secondary-text-color);
+        font-size: 12px;
+        line-height: 1.4;
       }
       .morning-brief-list {
         display: grid;

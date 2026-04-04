@@ -112,6 +112,7 @@ The card now prioritizes `Next up` above action suggestions, includes near-term 
 A follow-up UI cleanup further reduces duplicate supporting signals by deduping repeated insights, hiding overlaps with `Next up` / waste / suggested move, and limiting the secondary insight stack to only the most useful leftovers.
 A first morning-brief bridge now exposes a structured `morning_brief_payload` plus `morning_brief_top3` lines on the summary sensor attributes, so other cards/automations can consume the daily brief contract before UI rendering is expanded.
 The card now also renders a compact `Morning brief` block from `morning_brief_top3`, giving the daily brief a first in-card footprint without pulling in the full briefing UI yet.
+A follow-up slice adds a lightweight `morning_brief_meta` line so the card can show brief context (for example weather/state or priority count) without introducing a heavy new layout.
 
 ## Entities created
 

@@ -1417,6 +1417,15 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         morning_brief = await self._load_morning_brief_payload()
         top3_payload = morning_brief.get("top3") if isinstance(morning_brief, dict) else {}
         top3_lines = top3_payload.get("lines") if isinstance(top3_payload, dict) else []
+        weather_payload = morning_brief.get("weather") if isinstance(morning_brief, dict) else {}
+        weather_state = weather_payload.get("state") if isinstance(weather_payload, dict) else None
+        top3_result = top3_payload.get("result") if isinstance(top3_payload, dict) else {}
+        morning_brief_meta_parts = [
+            f"Weather: {weather_state}" if weather_state else None,
+            f"Top 3 ready" if isinstance(top3_lines, list) and top3_lines else None,
+            f"{len(top3_result.get('topThree', []))} priorities" if isinstance(top3_result, dict) and isinstance(top3_result.get('topThree'), list) else None,
+        ]
+        morning_brief_meta = " • ".join(part for part in morning_brief_meta_parts if part)
         summary = deduped[0]
         stats = {
             "insight_count": len(deduped),
@@ -1481,6 +1490,7 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             "morning_brief_available": bool(morning_brief),
             "morning_brief_generated_at": datetime.now(UTC).isoformat() if morning_brief else None,
             "morning_brief_top3": top3_lines if isinstance(top3_lines, list) else [],
+            "morning_brief_meta": morning_brief_meta or None,
             "morning_brief_payload": morning_brief if isinstance(morning_brief, dict) else {},
             "last_build_at": datetime.now(UTC).isoformat(),
         }
