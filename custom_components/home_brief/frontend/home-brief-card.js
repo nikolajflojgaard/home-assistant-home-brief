@@ -342,6 +342,7 @@ class HomeBriefCard extends HTMLElement {
 
     return `
       <section class="signal-stack" aria-label="Supporting signals">
+        <div class="focus-title">Also worth noting</div>
         ${insights.map((item) => `
           <div class="signal-row">
             <span class="signal-dot"></span>
@@ -426,12 +427,22 @@ class HomeBriefCard extends HTMLElement {
     const metrics = this._metricTiles(attrs).slice(0, 4);
     const maxItems = this._config.max_items || 6;
     const primaryInsight = insights[0] || stateObj.state;
+    const seen = new Set();
+    const actionStrings = [attrs?.top_action?.title, attrs?.top_action?.summary]
+      .filter(Boolean)
+      .map((item) => String(item).trim().toLowerCase());
     const filteredInsights = insights.filter((item, index) => {
-      if (index === 0) return false;
-      if (attrs.household_chores_summary && item === attrs.household_chores_summary) return false;
-      if (attrs.waste_pickup_summary && item === attrs.waste_pickup_summary) return false;
+      const normalized = String(item || '').trim().toLowerCase();
+      if (!normalized || index === 0) return false;
+      if (seen.has(normalized)) return false;
+      if (attrs.household_chores_summary && normalized === String(attrs.household_chores_summary).trim().toLowerCase()) return false;
+      if (attrs.nikolaj_chores_summary && normalized === String(attrs.nikolaj_chores_summary).trim().toLowerCase()) return false;
+      if (attrs.waste_pickup_summary && normalized === String(attrs.waste_pickup_summary).trim().toLowerCase()) return false;
+      if (actionStrings.includes(normalized)) return false;
+      if (normalized.startsWith('best move now:') || normalized.startsWith('suggested move:')) return false;
+      seen.add(normalized);
       return true;
-    }).slice(0, Math.max(0, maxItems - 1));
+    }).slice(0, Math.min(2, Math.max(0, maxItems - 1)));
 
     root.innerHTML = `
       <div class="content tone-${tone}">
