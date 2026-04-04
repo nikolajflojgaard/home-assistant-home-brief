@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import logging
-from collections.abc import Iterable
 import json
+import logging
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -48,6 +49,7 @@ from .discovery import (
 from .storage import ApplianceState, DiscoveryState, HomeBriefStore, StoredState
 
 _LOGGER = logging.getLogger(__name__)
+_BRIEF_RUNTIME_PATH = Path("/Users/nikolajflojgaard/.openclaw/workspace/scripts/daily_brief_runtime.py")
 
 DONE_STATES = {"done", "completed", "complete", "finished", "idle", "clean"}
 RUNNING_STATES = {"running", "on", "washing", "drying", "active"}
@@ -174,6 +176,7 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         self.discovery_defaults: dict[str, Any] = {}
         self.discovery_summary: dict[str, Any] = {}
         self.discovery_scanned_at: str = ""
+        self._morning_brief_cache: dict[str, Any] = {}
         super().__init__(
             hass,
             logger=_LOGGER,
@@ -183,6 +186,24 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
 
     def _configured_value(self, key: str, default: Any = None) -> Any:
         return self.entry.options.get(key, self.entry.data.get(key, default))
+
+    async def _load_morning_brief_payload(self) -> dict[str, Any]:
+        if not _BRIEF_RUNTIME_PATH.exists():
+            return self._morning_brief_cache
+        try:
+            result = await self.hass.async_add_executor_job(
+                lambda: __import__("subprocess").check_output([
+                    "python3",
+                    str(_BRIEF_RUNTIME_PATH),
+                ], text=True, timeout=45)
+            )
+            payload = json.loads(result)
+            if isinstance(payload, dict):
+                self._morning_brief_cache = payload
+                return payload
+        except Exception as err:  # pragma: no cover - defensive integration bridge
+            _LOGGER.debug("Morning brief payload load failed: %s", err)
+        return self._morning_brief_cache
 
     def _configured_payload(self) -> dict[str, Any]:
         payload = dict(self.entry.data)
@@ -1393,6 +1414,9 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         source_details = self._source_details()
         source_summary, explicit_source_count, autofilled_source_count = self._source_summary(source_details)
         effective_config = self._effective_config()
+        morning_brief = await self._load_morning_brief_payload()
+        top3_payload = morning_brief.get("top3") if isinstance(morning_brief, dict) else {}
+        top3_lines = top3_payload.get("lines") if isinstance(top3_payload, dict) else []
         summary = deduped[0]
         stats = {
             "insight_count": len(deduped),
@@ -1454,6 +1478,10 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             "source_summary": source_summary,
             "source_explicit_count": explicit_source_count,
             "source_autofilled_count": autofilled_source_count,
+            "morning_brief_available": bool(morning_brief),
+            "morning_brief_generated_at": datetime.now(UTC).isoformat() if morning_brief else None,
+            "morning_brief_top3": top3_lines if isinstance(top3_lines, list) else [],
+            "morning_brief_payload": morning_brief if isinstance(morning_brief, dict) else {},
             "last_build_at": datetime.now(UTC).isoformat(),
         }
         stats.update(weather_stats)

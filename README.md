@@ -110,6 +110,7 @@ If the upstream Household Chores integration provides explicit task `slot` value
 When solar output is `0 W`, the Solar metric tile is hidden instead of showing a dead/neutral tile.
 The card now prioritizes `Next up` above action suggestions, includes near-term waste in `Next up`, shows actual task titles in `Today by slot`, and demotes the old oversized `Best move now` treatment into a smaller `Suggested move` block.
 A follow-up UI cleanup further reduces duplicate supporting signals by deduping repeated insights, hiding overlaps with `Next up` / waste / suggested move, and limiting the secondary insight stack to only the most useful leftovers.
+A first morning-brief bridge now exposes a structured `morning_brief_payload` plus `morning_brief_top3` lines on the summary sensor attributes, so other cards/automations can consume the daily brief contract before UI rendering is expanded.
 
 ## Entities created
 
