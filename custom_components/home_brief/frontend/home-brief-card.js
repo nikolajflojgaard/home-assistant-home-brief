@@ -384,6 +384,25 @@ class HomeBriefCard extends HTMLElement {
     `;
   }
 
+  _morningBriefPanel(attrs) {
+    const lines = Array.isArray(attrs.morning_brief_top3) ? attrs.morning_brief_top3.filter(Boolean).slice(0, 3) : [];
+    if (!lines.length) return '';
+
+    return `
+      <section class="morning-brief-panel">
+        <div class="focus-title">Morning brief</div>
+        <div class="morning-brief-list">
+          ${lines.map((line, index) => `
+            <div class="morning-brief-item ${index === 0 ? 'morning-brief-item-primary' : ''}">
+              <div class="morning-brief-rank">${index + 1}</div>
+              <div class="morning-brief-text">${this._escapeHtml(line)}</div>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+    `;
+  }
+
   _focusPanel(attrs) {
     const items = this._focusItems(attrs);
     if (!items.length) return '';
@@ -468,6 +487,8 @@ class HomeBriefCard extends HTMLElement {
         ` : ''}
 
         ${this._focusPanel(attrs)}
+
+        ${this._morningBriefPanel(attrs)}
 
         ${this._slotPanel(attrs)}
 
@@ -1038,6 +1059,44 @@ class HomeBriefCard extends HTMLElement {
         color: var(--primary-text-color);
         font-size: 12px;
         line-height: 1.45;
+      }
+      .morning-brief-panel {
+        margin-top: 16px;
+        padding: 14px;
+        border-radius: 20px;
+        border: 1px solid color-mix(in srgb, var(--primary-color) 14%, transparent);
+        background: color-mix(in srgb, var(--primary-color) 5%, var(--card-background-color));
+      }
+      .morning-brief-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 8px;
+      }
+      .morning-brief-item {
+        display: grid;
+        grid-template-columns: 20px 1fr;
+        gap: 10px;
+        align-items: start;
+      }
+      .morning-brief-rank {
+        width: 20px;
+        height: 20px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--secondary-text-color);
+        background: color-mix(in srgb, var(--divider-color) 72%, transparent);
+      }
+      .morning-brief-item-primary .morning-brief-rank {
+        color: white;
+        background: var(--primary-color);
+      }
+      .morning-brief-text {
+        font-size: 13px;
+        line-height: 1.45;
+        color: var(--primary-text-color);
       }
       .signal-stack {
         display: grid;
