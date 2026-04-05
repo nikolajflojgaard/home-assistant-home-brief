@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 - This gives the imported brief actual editorial weight in the UI while still keeping the card compact enough to scan.
 - Product fix: the imported brief now reads more like a real briefing surface and less like a hidden payload with one visible line.
 
+## 0.6.17
+
+- Fixed the remaining GitHub `Validate` failure in `scripts/validate.sh` by removing the broken `ghcr.io/home-assistant/hassfest:stable` image reference.
+- The optional hassfest step now uses the correct image name and is non-blocking when Docker/image availability misbehaves, so `Validate` stops failing on an optional external dependency.
+- This is a CI reliability fix, not a product feature change.
+
 ## 0.6.16
 
 - Fixed Home Brief package consumption so persisted imported packages keep `brief_text` and other richer fields instead of collapsing back down to a slim reconstructed shape after restart.
