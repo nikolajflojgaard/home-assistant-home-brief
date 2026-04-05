@@ -425,17 +425,7 @@ class HomeBriefCard extends HTMLElement {
       : '';
     const lead = this._escapeHtml(lines[0] || packageSummary);
     const rest = lines.slice(1);
-    const nikolajTasks = Array.isArray(pkg?.nikolaj_tasks) ? pkg.nikolaj_tasks.slice(0, 3) : [];
-    const householdTasks = Array.isArray(pkg?.household_tasks) ? pkg.household_tasks.slice(0, 3) : [];
     const packageRows = [
-      nikolajTasks.length ? {
-        title: 'Nikolaj’s tasks',
-        value: nikolajTasks.map((item) => [item.title, item.date].filter(Boolean).join(' — ')).join(' · '),
-      } : null,
-      householdTasks.length ? {
-        title: 'Household',
-        value: householdTasks.map((item) => [item.title, Array.isArray(item.assignee_names) ? item.assignee_names.join(', ') : ''].filter(Boolean).join(' — ')).join(' · '),
-      } : null,
       pkg?.solar?.yesterday_kwh !== undefined && pkg?.solar?.yesterday_kwh !== null ? {
         title: 'Solar',
         value: `Yesterday ${pkg.solar.yesterday_kwh} kWh`,

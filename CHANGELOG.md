@@ -8,6 +8,11 @@ All notable changes to this project will be documented in this file.
 - This gives the imported brief actual editorial weight in the UI while still keeping the card compact enough to scan.
 - Product fix: the imported brief now reads more like a real briefing surface and less like a hidden payload with one visible line.
 
+## 0.6.18
+
+- Removed the imported `Nikolaj’s tasks` and `Household` rows from the Morning Brief package surface so that section can stay focused on briefing/intelligence content instead of repeating operational task blocks already covered below.
+- This is a small but necessary cleanup release before the larger numbered-section Morning Brief overhaul.
+
 ## 0.6.17
 
 - Fixed the remaining GitHub `Validate` failure in `scripts/validate.sh` by removing the broken `ghcr.io/home-assistant/hassfest:stable` image reference.
