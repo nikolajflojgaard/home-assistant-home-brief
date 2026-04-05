@@ -1,9 +1,7 @@
 {
   "name": "Home Brief",
   "content_in_root": false,
-  "domains": [
-    "home_brief"
-  ],
+  "country": ["DK"],
   "homeassistant": "2024.6.0",
   "render_readme": true,
   "filename": "custom_components/home_brief"
