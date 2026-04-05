@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.8
+
+- Added a dedicated `home_brief.publish_daily_brief_package` action so the daily brief now has an intentional send path into Home Brief instead of pretending the richer package is just a generic morning-brief payload.
+- Updated the runtime producer to publish the structured daily brief package through that dedicated action, including summary/title context plus the existing HA-backed task, weather, and solar data.
+- This completes Task 2 of the split: the daily brief package now has both a real home in Home Brief and a real action path to send data into it.
+
 ## 0.6.7
 
 - Added a first-class imported `daily_brief_package` surface to Home Brief so the daily brief can populate a richer structured section instead of only feeding three flat Morning Brief lines.

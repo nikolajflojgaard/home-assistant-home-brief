@@ -12,6 +12,7 @@ SERVICE_GET_BRIEF = "get_brief"
 SERVICE_GET_ACTIONS = "get_actions"
 SERVICE_RESCAN = "rescan"
 SERVICE_PUBLISH_MORNING_BRIEF = "publish_morning_brief"
+SERVICE_PUBLISH_DAILY_BRIEF_PACKAGE = "publish_daily_brief_package"
 
 _GET_BRIEF_SCHEMA = vol.Schema({vol.Required("entry_id"): str})
 _RESCAN_SCHEMA = vol.Schema({vol.Optional("entry_id"): str})
@@ -20,6 +21,13 @@ _PUBLISH_MORNING_BRIEF_SCHEMA = vol.Schema(
         vol.Required("entry_id"): str,
         vol.Required("payload"): dict,
         vol.Optional("source", default="service"): str,
+    }
+)
+_PUBLISH_DAILY_BRIEF_PACKAGE_SCHEMA = vol.Schema(
+    {
+        vol.Required("entry_id"): str,
+        vol.Required("payload"): dict,
+        vol.Optional("source", default="daily_brief_package"): str,
     }
 )
 
@@ -92,6 +100,31 @@ async def async_register(hass: HomeAssistant) -> None:
             "keys": sorted((published.get("payload") or {}).keys()),
         }
 
+    async def _async_publish_daily_brief_package(call: ServiceCall) -> ServiceResponse:
+        entry_id = str(call.data["entry_id"])
+        coordinator = _coordinator_for_entry_id(hass, entry_id)
+        if coordinator is None:
+            return {"ok": False, "error": "entry_not_found"}
+
+        payload = dict(call.data.get("payload") or {})
+        package_payload = {
+            **payload,
+            "package_kind": "daily_brief",
+        }
+        published = await coordinator.async_publish_morning_brief(
+            payload=package_payload,
+            source=str(call.data.get("source") or "daily_brief_package"),
+        )
+        await coordinator.async_request_refresh()
+        return {
+            "ok": True,
+            "entry_id": entry_id,
+            "published_at": published.get("published_at"),
+            "source": published.get("source"),
+            "keys": sorted((published.get("payload") or {}).keys()),
+            "package_kind": "daily_brief",
+        }
+
     async def _async_rescan(call: ServiceCall) -> ServiceResponse:
         entry_id = call.data.get("entry_id")
         runtime = hass.data.get(DOMAIN)
@@ -144,6 +177,15 @@ async def async_register(hass: HomeAssistant) -> None:
             SERVICE_PUBLISH_MORNING_BRIEF,
             _async_publish_morning_brief,
             schema=_PUBLISH_MORNING_BRIEF_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_PUBLISH_DAILY_BRIEF_PACKAGE):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_PUBLISH_DAILY_BRIEF_PACKAGE,
+            _async_publish_daily_brief_package,
+            schema=_PUBLISH_DAILY_BRIEF_PACKAGE_SCHEMA,
             supports_response=SupportsResponse.ONLY,
         )
 

@@ -39,6 +39,25 @@ publish_morning_brief:
       selector:
         object:
 
+publish_daily_brief_package:
+  name: Publish daily brief package
+  description: Persist the structured daily brief package into Home Brief so the card can render the imported brief surface intentionally instead of treating it like a generic morning-brief blob.
+  target:
+    entity: []
+  fields:
+    entry_id:
+      required: true
+      selector:
+        text:
+    source:
+      required: false
+      selector:
+        text:
+    payload:
+      required: true
+      selector:
+        object:
+
 rescan:
   name: Rescan Home Assistant
   description: Re-run Home Brief discovery so missing fields can pick up newly available entities without overwriting explicit user selections.
