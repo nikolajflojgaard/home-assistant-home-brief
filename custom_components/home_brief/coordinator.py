@@ -1503,6 +1503,8 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             "source": morning_brief_source,
             "published_at": morning_brief_published_at,
         }
+        effective_brief_published_at = imported_brief_package.get("published_at") or morning_brief_published_at
+        effective_brief_source = imported_brief_package.get("source") or morning_brief_source
         morning_brief_meta_parts = [
             f"Weather: {weather_state}" if weather_state else None,
             f"Top 3 ready" if normalized_top3_lines else None,
@@ -1607,9 +1609,9 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             "source_explicit_count": explicit_source_count,
             "source_autofilled_count": autofilled_source_count,
             "morning_brief_available": bool(morning_brief),
-            "morning_brief_generated_at": morning_brief_published_at or (datetime.now(UTC).isoformat() if morning_brief else None),
-            "morning_brief_published_at": morning_brief_published_at,
-            "morning_brief_source": morning_brief_source,
+            "morning_brief_generated_at": effective_brief_published_at or (datetime.now(UTC).isoformat() if morning_brief else None),
+            "morning_brief_published_at": effective_brief_published_at,
+            "morning_brief_source": effective_brief_source,
             "morning_brief_top3": top3_lines if isinstance(top3_lines, list) else [],
             "morning_brief_meta": morning_brief_meta or None,
             "morning_brief_payload": morning_brief if isinstance(morning_brief, dict) else {},

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.10
+
+- Fixed the exposed Morning Brief publish metadata so Home Brief now reports the actual latest imported daily-brief package timestamp/source instead of showing stale publish information after a successful package send.
+- This is a cleanup release, not a plumbing release: the daily brief package path already worked, but the visible freshness metadata needed to catch up with reality.
+
 ## 0.6.9
 
 - Fixed Home Brief’s consumption of the newly published daily brief package so the card/state now reads package content directly from the stored published payload instead of reconstructing partial fields from older morning-brief assumptions.
