@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.7
+
+- Added a first-class imported `daily_brief_package` surface to Home Brief so the daily brief can populate a richer structured section instead of only feeding three flat Morning Brief lines.
+- The Morning Brief panel can now show package rows for imported Nikolaj tasks, household tasks, and solar context when that data exists, creating a real home for the daily brief package inside the card.
+- This is Task 1 of the split: create room for the daily brief package in Home Brief before wiring the final trigger/action path into it.
+
 ## 0.6.6
 
 - Reworked the `Household focus` section so it now lists the actual household tasks with assignee names instead of leaning on a Nikolaj-specific summary path.

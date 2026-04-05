@@ -1484,6 +1484,22 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         weather_payload = morning_brief.get("weather") if isinstance(morning_brief, dict) else {}
         weather_state = weather_payload.get("state") if isinstance(weather_payload, dict) else None
         top3_result = top3_payload.get("result") if isinstance(top3_payload, dict) else {}
+        imported_brief_package = {
+            "summary": morning_brief.get("summary") if isinstance(morning_brief.get("summary"), str) else None,
+            "top3": normalized_top3_lines if 'normalized_top3_lines' in locals() else [],
+            "nikolaj_tasks": nikolaj_chores[:3],
+            "household_tasks": household_chores[:3],
+            "weather": {
+                "state": weather_state,
+                "temperature": weather_payload.get("temperature") if isinstance(weather_payload, dict) else None,
+            },
+            "solar": {
+                "today_kwh": morning_brief.get("solar_today", {}).get("state") if isinstance(morning_brief.get("solar_today"), dict) else None,
+                "yesterday_kwh": morning_brief.get("solar_yesterday_kwh") if isinstance(morning_brief, dict) else None,
+            },
+            "source": stored.morning_brief.source or None,
+            "published_at": stored.morning_brief.published_at or None,
+        }
         morning_brief_published_at = stored.morning_brief.published_at or None
         morning_brief_source = stored.morning_brief.source or ("runtime_bridge" if morning_brief else None)
         normalized_top3_lines = [str(line).strip() for line in top3_lines] if isinstance(top3_lines, list) else []
@@ -1597,6 +1613,8 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             "morning_brief_top3": top3_lines if isinstance(top3_lines, list) else [],
             "morning_brief_meta": morning_brief_meta or None,
             "morning_brief_payload": morning_brief if isinstance(morning_brief, dict) else {},
+            "daily_brief_package": imported_brief_package,
+            "daily_brief_ready": bool(imported_brief_package.get("top3") or imported_brief_package.get("summary") or imported_brief_package.get("nikolaj_tasks") or imported_brief_package.get("household_tasks")),
             "last_build_at": datetime.now(UTC).isoformat(),
         }
         stats.update(weather_stats)

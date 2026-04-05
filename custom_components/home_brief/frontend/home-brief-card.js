@@ -384,13 +384,17 @@ class HomeBriefCard extends HTMLElement {
   }
 
   _morningBriefPanel(attrs) {
+    const pkg = attrs.daily_brief_package && typeof attrs.daily_brief_package === 'object' ? attrs.daily_brief_package : null;
     const lines = Array.isArray(attrs.morning_brief_top3) ? attrs.morning_brief_top3.filter(Boolean).slice(0, 3) : [];
-    if (!lines.length) return '';
+    const packageSummary = pkg && typeof pkg.summary === 'string' ? pkg.summary.trim() : '';
+    if (!lines.length && !packageSummary) return '';
 
-    const weatherState = String(attrs.weather_state || '').trim();
+    const weatherState = String(attrs.weather_state || pkg?.weather?.state || '').trim();
     const weatherTemp = attrs.weather_temperature !== undefined && attrs.weather_temperature !== null
       ? `${this._formatNumber(attrs.weather_temperature, 1)}°C`
-      : null;
+      : (pkg?.weather?.temperature !== undefined && pkg?.weather?.temperature !== null
+        ? `${this._formatNumber(pkg.weather.temperature, 1)}°C`
+        : null);
     const generatedAt = attrs.morning_brief_generated_at ? new Date(attrs.morning_brief_generated_at) : null;
     const generatedLabel = generatedAt && !Number.isNaN(generatedAt.getTime())
       ? generatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -403,8 +407,24 @@ class HomeBriefCard extends HTMLElement {
     ].filter(Boolean);
 
     const meta = attrs.morning_brief_meta ? `<div class="morning-brief-meta">${this._escapeHtml(attrs.morning_brief_meta)}</div>` : '';
-    const lead = this._escapeHtml(lines[0]);
+    const lead = this._escapeHtml(lines[0] || packageSummary);
     const rest = lines.slice(1);
+    const nikolajTasks = Array.isArray(pkg?.nikolaj_tasks) ? pkg.nikolaj_tasks.slice(0, 3) : [];
+    const householdTasks = Array.isArray(pkg?.household_tasks) ? pkg.household_tasks.slice(0, 3) : [];
+    const packageRows = [
+      nikolajTasks.length ? {
+        title: 'Nikolaj’s tasks',
+        value: nikolajTasks.map((item) => [item.title, item.date].filter(Boolean).join(' — ')).join(' · '),
+      } : null,
+      householdTasks.length ? {
+        title: 'Household',
+        value: householdTasks.map((item) => [item.title, Array.isArray(item.assignee_names) ? item.assignee_names.join(', ') : ''].filter(Boolean).join(' — ')).join(' · '),
+      } : null,
+      pkg?.solar?.yesterday_kwh !== undefined && pkg?.solar?.yesterday_kwh !== null ? {
+        title: 'Solar',
+        value: `Yesterday ${pkg.solar.yesterday_kwh} kWh`,
+      } : null,
+    ].filter(Boolean);
 
     return `
       <section class="morning-brief-panel">
@@ -426,6 +446,16 @@ class HomeBriefCard extends HTMLElement {
               <div class="morning-brief-item">
                 <div class="morning-brief-rank">${index + 2}</div>
                 <div class="morning-brief-text">${this._escapeHtml(line)}</div>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+        ${packageRows.length ? `
+          <div class="morning-brief-package">
+            ${packageRows.map((row) => `
+              <div class="morning-brief-package-row">
+                <div class="morning-brief-package-title">${this._escapeHtml(row.title)}</div>
+                <div class="morning-brief-package-value">${this._escapeHtml(row.value)}</div>
               </div>
             `).join('')}
           </div>
@@ -1181,6 +1211,29 @@ class HomeBriefCard extends HTMLElement {
         margin-top: 14px;
         padding-top: 12px;
         border-top: 1px solid color-mix(in srgb, var(--divider-color) 34%, transparent);
+      }
+      .morning-brief-package {
+        display: grid;
+        gap: 10px;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid color-mix(in srgb, var(--divider-color) 34%, transparent);
+      }
+      .morning-brief-package-row {
+        display: grid;
+        gap: 4px;
+      }
+      .morning-brief-package-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--secondary-text-color);
+        font-weight: 700;
+      }
+      .morning-brief-package-value {
+        font-size: 13px;
+        line-height: 1.45;
+        color: var(--primary-text-color);
       }
       .morning-brief-item {
         display: grid;
