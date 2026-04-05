@@ -24,10 +24,23 @@ _PUBLISH_MORNING_BRIEF_SCHEMA = vol.Schema(
 )
 
 
+def _coordinator_for_entry_id(hass: HomeAssistant, entry_id: str):
+    domain_data = hass.data.get(DOMAIN, {})
+    coordinator = domain_data.get(entry_id)
+    if coordinator is not None:
+        return coordinator
+
+    entry = hass.config_entries.async_get_entry(entry_id)
+    if entry is None or entry.domain != DOMAIN:
+        return None
+
+    return domain_data.get(entry.entry_id)
+
+
 async def async_register(hass: HomeAssistant) -> None:
     async def _async_get_brief(call: ServiceCall) -> ServiceResponse:
         entry_id = str(call.data["entry_id"])
-        coordinator = hass.data.get(DOMAIN, {}).get(entry_id)
+        coordinator = _coordinator_for_entry_id(hass, entry_id)
         if coordinator is None:
             return {"ok": False, "error": "entry_not_found"}
         data = coordinator.data
@@ -40,7 +53,7 @@ async def async_register(hass: HomeAssistant) -> None:
 
     async def _async_get_actions(call: ServiceCall) -> ServiceResponse:
         entry_id = str(call.data["entry_id"])
-        coordinator = hass.data.get(DOMAIN, {}).get(entry_id)
+        coordinator = _coordinator_for_entry_id(hass, entry_id)
         if coordinator is None:
             return {"ok": False, "error": "entry_not_found"}
         data = coordinator.data
@@ -55,7 +68,7 @@ async def async_register(hass: HomeAssistant) -> None:
 
     async def _async_publish_morning_brief(call: ServiceCall) -> ServiceResponse:
         entry_id = str(call.data["entry_id"])
-        coordinator = hass.data.get(DOMAIN, {}).get(entry_id)
+        coordinator = _coordinator_for_entry_id(hass, entry_id)
         if coordinator is None:
             return {"ok": False, "error": "entry_not_found"}
         published = await coordinator.async_publish_morning_brief(
@@ -76,7 +89,7 @@ async def async_register(hass: HomeAssistant) -> None:
         coordinators = hass.data.get(DOMAIN, {})
         targets = []
         if entry_id:
-            coordinator = coordinators.get(str(entry_id))
+            coordinator = _coordinator_for_entry_id(hass, str(entry_id))
             if coordinator is None:
                 return {"ok": False, "error": "entry_not_found"}
             targets = [coordinator]
