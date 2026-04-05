@@ -19,7 +19,8 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    coordinator: HomeBriefCoordinator = hass.data[DOMAIN][entry.entry_id]
+    runtime = hass.data[DOMAIN]
+    coordinator: HomeBriefCoordinator = runtime.entries[entry.entry_id]
     async_add_entities(
         [
             HomeBriefSummarySensor(entry, coordinator),

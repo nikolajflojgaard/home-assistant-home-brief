@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.4
+
+- Fixed the sensor platform to read coordinators from the new runtime registry shape instead of the old `hass.data[DOMAIN][entry_id]` dict path.
+- This restores Home Brief entity creation after the runtime bookkeeping refactor, which is why the publish path could succeed while `sensor.home_brief_summary` still did not exist.
+- Production hotfix: get the entities back so the morning-brief data can actually surface in the card.
+
 ## 0.6.3
 
 - Reworked Home Brief runtime bookkeeping so loaded coordinators live in a dedicated runtime structure instead of sharing a loose dict with service/frontend registration flags.
