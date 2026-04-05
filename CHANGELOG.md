@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 - This gives the imported brief actual editorial weight in the UI while still keeping the card compact enough to scan.
 - Product fix: the imported brief now reads more like a real briefing surface and less like a hidden payload with one visible line.
 
+## 0.6.14
+
+- Fixed GitHub `Validate` workflow properly by aligning `requirements-dev.txt` with what `scripts/validate.sh` actually uses.
+- Removed the stale heavy Home Assistant pytest stack from dev requirements, which was forcing CI to compile ancient `aiohttp` wheels for no good reason and fail on modern runners.
+- This is the real CI fix: lightweight validation deps for a lightweight validation script.
+
 ## 0.6.11
 
 - Fixed the card so imported daily brief package summaries get their own visible summary line instead of being effectively hidden whenever Top 3 bullets are also present.
