@@ -410,6 +410,19 @@ class HomeBriefCard extends HTMLElement {
     const summaryBlock = packageSummary && (!lines.length || packageSummary !== lines[0])
       ? `<div class="morning-brief-summary">${this._escapeHtml(packageSummary)}</div>`
       : '';
+    const briefText = pkg && typeof pkg.brief_text === 'string' ? pkg.brief_text.trim() : '';
+    const synopsisText = briefText
+      ? briefText
+          .split(/\n\s*\n/)
+          .map((part) => part.trim())
+          .filter((part) => part && !/^Daily brief/i.test(part) && !/^If I only do 3 things today/i.test(part) && !/^Nikolaj’s Tasks/i.test(part) && !/^Household Chores/i.test(part) && !/^Solar/i.test(part))
+          .slice(0, 2)
+          .join(' ')
+          .replace(/\s+/g, ' ')
+      : '';
+    const synopsisBlock = synopsisText
+      ? `<div class="morning-brief-synopsis">${this._escapeHtml(synopsisText)}</div>`
+      : '';
     const lead = this._escapeHtml(lines[0] || packageSummary);
     const rest = lines.slice(1);
     const nikolajTasks = Array.isArray(pkg?.nikolaj_tasks) ? pkg.nikolaj_tasks.slice(0, 3) : [];
@@ -435,6 +448,7 @@ class HomeBriefCard extends HTMLElement {
           <div>
             <div class="morning-brief-eyebrow">Morning brief</div>
             ${summaryBlock}
+            ${synopsisBlock}
             <div class="morning-brief-lead">${lead}</div>
             ${meta}
           </div>
@@ -1185,6 +1199,13 @@ class HomeBriefCard extends HTMLElement {
         font-size: 13px;
         line-height: 1.45;
         color: var(--secondary-text-color);
+      }
+      .morning-brief-synopsis {
+        margin-bottom: 10px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--primary-text-color);
+        opacity: 0.92;
       }
       .morning-brief-lead {
         font-size: 18px;

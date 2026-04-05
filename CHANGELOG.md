@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.13
+
+- Added a compact visible synopsis excerpt from the imported `brief_text` so the Morning Brief card now shows more of the real daily brief package, not just a kicker line plus Top 3 bullets.
+- This gives the imported brief actual editorial weight in the UI while still keeping the card compact enough to scan.
+- Product fix: the imported brief now reads more like a real briefing surface and less like a hidden payload with one visible line.
+
 ## 0.6.11
 
 - Fixed the card so imported daily brief package summaries get their own visible summary line instead of being effectively hidden whenever Top 3 bullets are also present.
