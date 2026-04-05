@@ -110,9 +110,10 @@ If the upstream Household Chores integration provides explicit task `slot` value
 When solar output is `0 W`, the Solar metric tile is hidden instead of showing a dead/neutral tile.
 The card now prioritizes `Next up` above action suggestions, includes near-term waste in `Next up`, shows actual task titles in `Today by slot`, and demotes the old oversized `Best move now` treatment into a smaller `Suggested move` block.
 A follow-up UI cleanup further reduces duplicate supporting signals by deduping repeated insights, hiding overlaps with `Next up` / waste / suggested move, and limiting the secondary insight stack to only the most useful leftovers.
-A first morning-brief bridge now exposes a structured `morning_brief_payload` plus `morning_brief_top3` lines on the summary sensor attributes, so other cards/automations can consume the daily brief contract before UI rendering is expanded.
-The card now also renders a compact `Morning brief` block from `morning_brief_top3`, giving the daily brief a first in-card footprint without pulling in the full briefing UI yet.
-A follow-up slice adds a lightweight `morning_brief_meta` line so the card can show brief context (for example weather/state or priority count) without introducing a heavy new layout.
+A structured morning-brief payload is now exposed on the summary sensor attributes, so other cards/automations can consume the daily brief contract instead of scraping display text.
+Home Brief now supports a `home_brief.publish_morning_brief` service that lets a scheduler or external workflow publish a stable structured payload into integration storage; the card and sensor then render that persisted data even if the runtime generator is unavailable.
+The older local runtime bridge still exists as a fallback, but persisted published data now wins. That is the intended architecture: generation and rendering should be loosely coupled.
+The card now also renders a compact `Morning brief` block from `morning_brief_top3`, and a later pass promoted it into a first-class section with a stronger hierarchy and compact context chips.
 
 ## Entities created
 
@@ -173,6 +174,18 @@ The summary sensor exposes useful attributes including:
 - `discovery_lights_count`
 - `discovery_lights_autofilled`
 - `discovery_scanned_at`
+- `morning_brief_generated_at`
+- `morning_brief_published_at`
+- `morning_brief_source`
+- `morning_brief_top3`
+- `morning_brief_meta`
+- `morning_brief_payload`
+- `active_profile`
+- `active_profile_id`
+- `active_profile_name`
+- `active_profile_focus_mode`
+- `active_profile_interests`
+- `profiles_count`
 - `last_build_at`
 
 ## Services
@@ -185,6 +198,32 @@ data:
   entry_id: YOUR_ENTRY_ID
 response_variable: brief
 ```
+
+### Publish structured morning brief data
+
+```yaml
+service: home_brief.publish_morning_brief
+data:
+  entry_id: YOUR_ENTRY_ID
+  source: cron
+  payload:
+    weather:
+      state: rainy
+    top3:
+      lines:
+        - Take out paper bins
+        - Run dishwasher in solar window
+        - Clear Nikolaj task queue before noon
+response_variable: result
+```
+
+If you are using Nikolaj's existing runtime bridge, it can now publish directly instead of only printing JSON:
+
+```bash
+python3 ~/.openclaw/workspace/scripts/daily_brief_runtime.py --publish-entry-id YOUR_ENTRY_ID
+```
+
+That should be the primary scheduled path going forward: generate once, publish structured payload, render from stored state.
 
 ### Force a discovery rescan
 
@@ -265,12 +304,24 @@ Home Brief should feel like:
 
 ## Roadmap
 
+Home Brief is now entering a broader rework track aimed at a stronger personalized foundation rather than more one-off features. See [`docs/REWORK-FOUNDATION.md`](./docs/REWORK-FOUNDATION.md).
+
 Short-term:
 
-- screenshots / demo GIFs
+- move scheduled daily-brief cron to publish into `home_brief.publish_morning_brief`
+- normalize published morning-brief payload + freshness metadata
+- add person profile storage and basic preference model
+- style/density cleanup for the Morning brief section on top of the new model
+- settings surface v1 for focus mode + category visibility
+
+Mid-term:
+
+- view-model driven card sections
+- multi-person personalization
 - notification packs
 - EV-specific insights
 - stronger appliance completion heuristics based on longer state history
+- screenshots / demo GIFs
 
 Potential later:
 

@@ -11,7 +11,7 @@ from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN
 
-_STORAGE_VERSION = 4
+_STORAGE_VERSION = 6
 
 
 @dataclass(slots=True)
@@ -34,12 +34,45 @@ class DiscoveryState:
 
 
 @dataclass(slots=True)
+class MorningBriefState:
+    """Persisted structured morning brief payload."""
+
+    payload: dict[str, Any] = field(default_factory=dict)
+    published_at: str = ""
+    source: str = ""
+
+
+@dataclass(slots=True)
+class PersonProfile:
+    """Persisted person profile for personalized brief behavior."""
+
+    id: str
+    name: str
+    aliases: list[str] = field(default_factory=list)
+    interests: list[str] = field(default_factory=list)
+    focus_mode: str = "balanced"
+    show_household: bool = True
+    show_personal: bool = True
+    show_ambient: bool = True
+
+
+@dataclass(slots=True)
+class ProfileState:
+    """Persisted profile model state."""
+
+    active_profile_id: str = "nikolaj"
+    profiles: list[PersonProfile] = field(default_factory=list)
+
+
+@dataclass(slots=True)
 class StoredState:
     """Stored Home Brief state."""
 
     washer: ApplianceState = field(default_factory=ApplianceState)
     dryer: ApplianceState = field(default_factory=ApplianceState)
     discovery: DiscoveryState = field(default_factory=DiscoveryState)
+    morning_brief: MorningBriefState = field(default_factory=MorningBriefState)
+    profiles: ProfileState = field(default_factory=ProfileState)
     updated_at: str = ""
 
 
@@ -68,12 +101,80 @@ def _discovery_from_raw(raw: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def _morning_brief_from_raw(raw: dict[str, Any] | None) -> dict[str, Any]:
+    raw = raw or {}
+    payload = raw.get("payload") if isinstance(raw.get("payload"), dict) else {}
+    return {
+        "payload": payload,
+        "published_at": str(raw.get("published_at") or ""),
+        "source": str(raw.get("source") or ""),
+    }
+
+
+def _default_profile_state() -> dict[str, Any]:
+    return {
+        "active_profile_id": "nikolaj",
+        "profiles": [
+            {
+                "id": "nikolaj",
+                "name": "Nikolaj",
+                "aliases": ["nikolaj"],
+                "interests": ["chores", "energy", "weather"],
+                "focus_mode": "balanced",
+                "show_household": True,
+                "show_personal": True,
+                "show_ambient": True,
+            }
+        ],
+    }
+
+
+def _profiles_from_raw(raw: dict[str, Any] | None) -> dict[str, Any]:
+    raw = raw or {}
+    profiles_raw = raw.get("profiles") if isinstance(raw.get("profiles"), list) else []
+    profiles: list[dict[str, Any]] = []
+    for item in profiles_raw:
+        if not isinstance(item, dict):
+            continue
+        profile_id = str(item.get("id") or "").strip()
+        name = str(item.get("name") or "").strip()
+        if not profile_id or not name:
+            continue
+        aliases = [str(alias).strip() for alias in item.get("aliases", []) if str(alias).strip()]
+        interests = [str(interest).strip() for interest in item.get("interests", []) if str(interest).strip()]
+        profiles.append(
+            {
+                "id": profile_id,
+                "name": name,
+                "aliases": aliases,
+                "interests": interests,
+                "focus_mode": str(item.get("focus_mode") or "balanced"),
+                "show_household": bool(item.get("show_household", True)),
+                "show_personal": bool(item.get("show_personal", True)),
+                "show_ambient": bool(item.get("show_ambient", True)),
+            }
+        )
+
+    if not profiles:
+        return _default_profile_state()
+
+    active_profile_id = str(raw.get("active_profile_id") or profiles[0]["id"])
+    if active_profile_id not in {item["id"] for item in profiles}:
+        active_profile_id = profiles[0]["id"]
+    return {
+        "active_profile_id": active_profile_id,
+        "profiles": profiles,
+    }
+
+
 def _migrate(raw: dict[str, Any]) -> dict[str, Any]:
     return {
-        "schema": 4,
+        "schema": 6,
         "washer": _appliance_from_raw(raw.get("washer") if isinstance(raw, dict) else None),
         "dryer": _appliance_from_raw(raw.get("dryer") if isinstance(raw, dict) else None),
         "discovery": _discovery_from_raw(raw.get("discovery") if isinstance(raw, dict) else None),
+        "morning_brief": _morning_brief_from_raw(raw.get("morning_brief") if isinstance(raw, dict) else None),
+        "profiles": _profiles_from_raw(raw.get("profiles") if isinstance(raw, dict) else None),
         "updated_at": _now_iso(),
     }
 
@@ -100,6 +201,11 @@ class HomeBriefStore:
             washer=ApplianceState(**_appliance_from_raw(self._data.get("washer"))),
             dryer=ApplianceState(**_appliance_from_raw(self._data.get("dryer"))),
             discovery=DiscoveryState(**_discovery_from_raw(self._data.get("discovery"))),
+            morning_brief=MorningBriefState(**_morning_brief_from_raw(self._data.get("morning_brief"))),
+            profiles=ProfileState(
+                active_profile_id=_profiles_from_raw(self._data.get("profiles")).get("active_profile_id", "nikolaj"),
+                profiles=[PersonProfile(**item) for item in _profiles_from_raw(self._data.get("profiles")).get("profiles", [])],
+            ),
             updated_at=str(self._data.get("updated_at") or ""),
         )
 
@@ -122,6 +228,27 @@ class HomeBriefStore:
                 "defaults": state.discovery.defaults,
                 "summary": state.discovery.summary,
                 "scanned_at": state.discovery.scanned_at,
+            },
+            "morning_brief": {
+                "payload": state.morning_brief.payload,
+                "published_at": state.morning_brief.published_at,
+                "source": state.morning_brief.source,
+            },
+            "profiles": {
+                "active_profile_id": state.profiles.active_profile_id,
+                "profiles": [
+                    {
+                        "id": profile.id,
+                        "name": profile.name,
+                        "aliases": profile.aliases,
+                        "interests": profile.interests,
+                        "focus_mode": profile.focus_mode,
+                        "show_household": profile.show_household,
+                        "show_personal": profile.show_personal,
+                        "show_ambient": profile.show_ambient,
+                    }
+                    for profile in state.profiles.profiles
+                ],
             },
             "updated_at": _now_iso(),
         }

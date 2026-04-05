@@ -46,7 +46,7 @@ from .discovery import (
     find_waste_entities,
     summarize_discovery,
 )
-from .storage import ApplianceState, DiscoveryState, HomeBriefStore, StoredState
+from .storage import ApplianceState, DiscoveryState, HomeBriefStore, MorningBriefState, StoredState
 
 _LOGGER = logging.getLogger(__name__)
 _BRIEF_RUNTIME_PATH = Path("/Users/nikolajflojgaard/.openclaw/workspace/scripts/daily_brief_runtime.py")
@@ -177,6 +177,7 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         self.discovery_summary: dict[str, Any] = {}
         self.discovery_scanned_at: str = ""
         self._morning_brief_cache: dict[str, Any] = {}
+        self._active_profile: dict[str, Any] = {}
         super().__init__(
             hass,
             logger=_LOGGER,
@@ -187,7 +188,35 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
     def _configured_value(self, key: str, default: Any = None) -> Any:
         return self.entry.options.get(key, self.entry.data.get(key, default))
 
+    async def async_publish_morning_brief(self, payload: dict[str, Any], source: str = "service") -> dict[str, Any]:
+        stored = await self.store.async_load()
+        normalized_payload = payload if isinstance(payload, dict) else {}
+        published_at = datetime.now(UTC).isoformat()
+        await self.store.async_save_state(
+            StoredState(
+                washer=stored.washer,
+                dryer=stored.dryer,
+                discovery=stored.discovery,
+                morning_brief=MorningBriefState(
+                    payload=normalized_payload,
+                    published_at=published_at,
+                    source=source,
+                ),
+            )
+        )
+        self._morning_brief_cache = normalized_payload
+        return {
+            "payload": normalized_payload,
+            "published_at": published_at,
+            "source": source,
+        }
+
     async def _load_morning_brief_payload(self) -> dict[str, Any]:
+        stored = await self.store.async_load()
+        persisted_payload = stored.morning_brief.payload if isinstance(stored.morning_brief.payload, dict) else {}
+        if persisted_payload:
+            self._morning_brief_cache = persisted_payload
+            return persisted_payload
         if not _BRIEF_RUNTIME_PATH.exists():
             return self._morning_brief_cache
         try:
@@ -233,6 +262,7 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
                 washer=stored.washer,
                 dryer=stored.dryer,
                 discovery=DiscoveryState(defaults=defaults, summary=summary, scanned_at=scanned_at),
+                morning_brief=stored.morning_brief,
             )
         )
         self.discovery_defaults = defaults
@@ -248,6 +278,25 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
 
     def _effective_config(self) -> dict[str, Any]:
         return effective_defaults(configured=self._configured_payload(), discovered=self.discovery_defaults)
+
+    async def _load_active_profile(self) -> dict[str, Any]:
+        stored = await self.store.async_load()
+        active_id = stored.profiles.active_profile_id
+        for profile in stored.profiles.profiles:
+            if profile.id == active_id:
+                self._active_profile = {
+                    "id": profile.id,
+                    "name": profile.name,
+                    "aliases": list(profile.aliases),
+                    "interests": list(profile.interests),
+                    "focus_mode": profile.focus_mode,
+                    "show_household": profile.show_household,
+                    "show_personal": profile.show_personal,
+                    "show_ambient": profile.show_ambient,
+                }
+                return self._active_profile
+        self._active_profile = {}
+        return self._active_profile
 
     def _configured_entities(self) -> list[str]:
         entities = [
@@ -1273,6 +1322,8 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             self.discovery_summary = dict(stored.discovery.summary)
             self.discovery_scanned_at = stored.discovery.scanned_at
 
+        active_profile = await self._load_active_profile()
+
         if not self.discovery_defaults:
             await self.async_refresh_discovery()
             stored = await self.store.async_load()
@@ -1382,6 +1433,7 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
                     summary=self.discovery_summary,
                     scanned_at=self.discovery_scanned_at,
                 ),
+                morning_brief=stored.morning_brief,
             )
         )
 
@@ -1420,6 +1472,8 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         weather_payload = morning_brief.get("weather") if isinstance(morning_brief, dict) else {}
         weather_state = weather_payload.get("state") if isinstance(weather_payload, dict) else None
         top3_result = top3_payload.get("result") if isinstance(top3_payload, dict) else {}
+        morning_brief_published_at = stored.morning_brief.published_at or None
+        morning_brief_source = stored.morning_brief.source or ("runtime_bridge" if morning_brief else None)
         morning_brief_meta_parts = [
             f"Weather: {weather_state}" if weather_state else None,
             f"Top 3 ready" if isinstance(top3_lines, list) and top3_lines else None,
@@ -1482,13 +1536,21 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             "discovery_lights_count": self.discovery_summary.get("lights_count", 0),
             "discovery_lights_autofilled": self.discovery_summary.get("lights_autofilled", False),
             "discovery_scanned_at": self.discovery_scanned_at,
+            "active_profile": active_profile,
+            "active_profile_id": active_profile.get("id"),
+            "active_profile_name": active_profile.get("name"),
+            "active_profile_focus_mode": active_profile.get("focus_mode"),
+            "active_profile_interests": active_profile.get("interests", []),
+            "profiles_count": len(stored.profiles.profiles),
             "effective_config": effective_config,
             "source_details": source_details,
             "source_summary": source_summary,
             "source_explicit_count": explicit_source_count,
             "source_autofilled_count": autofilled_source_count,
             "morning_brief_available": bool(morning_brief),
-            "morning_brief_generated_at": datetime.now(UTC).isoformat() if morning_brief else None,
+            "morning_brief_generated_at": morning_brief_published_at or (datetime.now(UTC).isoformat() if morning_brief else None),
+            "morning_brief_published_at": morning_brief_published_at,
+            "morning_brief_source": morning_brief_source,
             "morning_brief_top3": top3_lines if isinstance(top3_lines, list) else [],
             "morning_brief_meta": morning_brief_meta or None,
             "morning_brief_payload": morning_brief if isinstance(morning_brief, dict) else {},

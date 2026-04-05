@@ -20,6 +20,25 @@ get_actions:
       selector:
         text:
 
+publish_morning_brief:
+  name: Publish morning brief
+  description: Persist a structured morning brief payload for Home Brief to render and expose on the summary sensor.
+  target:
+    entity: []
+  fields:
+    entry_id:
+      required: true
+      selector:
+        text:
+    source:
+      required: false
+      selector:
+        text:
+    payload:
+      required: true
+      selector:
+        object:
+
 rescan:
   name: Rescan Home Assistant
   description: Re-run Home Brief discovery so missing fields can pick up newly available entities without overwriting explicit user selections.

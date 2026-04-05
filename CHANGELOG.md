@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.1
+
+- Added the first explicit person-profile foundation to Home Brief storage, seeded with a default `Nikolaj` profile instead of leaving personalization as an implicit coordinator assumption.
+- Exposed active profile metadata on the summary sensor attributes so future preference/settings work has a real attachment point.
+- This is intentionally a small foundation slice: behavior is mostly unchanged, but the product now has a proper profile model to build personalization on top of.
+
+## 0.6.0
+
+- Added a persisted structured morning-brief state to Home Brief storage plus a new `home_brief.publish_morning_brief` service, so schedulers can publish stable brief payloads directly into the integration instead of forcing the card to depend on a local runtime script.
+- Changed coordinator loading order so published stored brief data wins, while the old local runtime bridge remains only as a fallback path.
+- This establishes the intended architecture seam: brief generation can evolve independently from Home Brief rendering, which is what the scheduled brief pipeline needed to stop being brittle.
+
+## 0.5.9
+
+- Promoted the Morning brief block to a first-class card section instead of a flat appended list, with a lead priority, supporting follow-ups, and compact context chips for weather / freshness.
+- Moved Morning brief above the generic focus stack so the scheduled brief data now drives the card hierarchy instead of reading like secondary metadata.
+- Tightened the visual treatment of the Morning brief surface so it scans more like a productized briefing panel and less like debug output.
+
 ## 0.4.7
 
 - Hardened household chore normalization so Home Brief now handles more real-world task payload shapes (`title`/`name`/`task`, alternate due-date fields, nested assignee objects) instead of leaking raw object text into the summary sensor and card.

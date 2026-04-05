@@ -387,20 +387,50 @@ class HomeBriefCard extends HTMLElement {
   _morningBriefPanel(attrs) {
     const lines = Array.isArray(attrs.morning_brief_top3) ? attrs.morning_brief_top3.filter(Boolean).slice(0, 3) : [];
     if (!lines.length) return '';
+
+    const weatherState = String(attrs.weather_state || '').trim();
+    const weatherTemp = attrs.weather_temperature !== undefined && attrs.weather_temperature !== null
+      ? `${this._formatNumber(attrs.weather_temperature, 1)}°C`
+      : null;
+    const generatedAt = attrs.morning_brief_generated_at ? new Date(attrs.morning_brief_generated_at) : null;
+    const generatedLabel = generatedAt && !Number.isNaN(generatedAt.getTime())
+      ? generatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : null;
+
+    const chips = [
+      weatherState ? `Weather: ${weatherState}` : null,
+      weatherTemp,
+      generatedLabel ? `Updated ${generatedLabel}` : null,
+    ].filter(Boolean);
+
     const meta = attrs.morning_brief_meta ? `<div class="morning-brief-meta">${this._escapeHtml(attrs.morning_brief_meta)}</div>` : '';
+    const lead = this._escapeHtml(lines[0]);
+    const rest = lines.slice(1);
 
     return `
       <section class="morning-brief-panel">
-        <div class="focus-title">Morning brief</div>
-        ${meta}
-        <div class="morning-brief-list">
-          ${lines.map((line, index) => `
-            <div class="morning-brief-item ${index === 0 ? 'morning-brief-item-primary' : ''}">
-              <div class="morning-brief-rank">${index + 1}</div>
-              <div class="morning-brief-text">${this._escapeHtml(line)}</div>
+        <div class="morning-brief-header">
+          <div>
+            <div class="morning-brief-eyebrow">Morning brief</div>
+            <div class="morning-brief-lead">${lead}</div>
+            ${meta}
+          </div>
+          ${chips.length ? `
+            <div class="morning-brief-chips">
+              ${chips.map((chip) => `<span class="morning-brief-chip">${this._escapeHtml(chip)}</span>`).join('')}
             </div>
-          `).join('')}
+          ` : ''}
         </div>
+        ${rest.length ? `
+          <div class="morning-brief-list">
+            ${rest.map((line, index) => `
+              <div class="morning-brief-item">
+                <div class="morning-brief-rank">${index + 2}</div>
+                <div class="morning-brief-text">${this._escapeHtml(line)}</div>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
       </section>
     `;
   }
@@ -488,9 +518,9 @@ class HomeBriefCard extends HTMLElement {
           </section>
         ` : ''}
 
-        ${this._focusPanel(attrs)}
-
         ${this._morningBriefPanel(attrs)}
+
+        ${this._focusPanel(attrs)}
 
         ${this._slotPanel(attrs)}
 
@@ -1064,21 +1094,60 @@ class HomeBriefCard extends HTMLElement {
       }
       .morning-brief-panel {
         margin-top: 16px;
-        padding: 14px;
-        border-radius: 20px;
-        border: 1px solid color-mix(in srgb, var(--primary-color) 14%, transparent);
-        background: color-mix(in srgb, var(--primary-color) 5%, var(--card-background-color));
+        padding: 16px;
+        border-radius: 22px;
+        border: 1px solid color-mix(in srgb, var(--primary-color) 16%, transparent);
+        background:
+          linear-gradient(180deg, color-mix(in srgb, var(--primary-color) 7%, var(--card-background-color)), color-mix(in srgb, var(--primary-color) 3%, var(--card-background-color)));
+        box-shadow: inset 0 1px 0 color-mix(in srgb, white 28%, transparent);
+      }
+      .morning-brief-header {
+        display: grid;
+        gap: 12px;
+      }
+      .morning-brief-eyebrow {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--secondary-text-color);
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+      .morning-brief-lead {
+        font-size: 18px;
+        line-height: 1.3;
+        font-weight: 700;
+        letter-spacing: -0.02em;
       }
       .morning-brief-meta {
-        margin-top: 4px;
+        margin-top: 6px;
         color: var(--secondary-text-color);
         font-size: 12px;
-        line-height: 1.4;
+        line-height: 1.45;
+      }
+      .morning-brief-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .morning-brief-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        line-height: 1;
+        font-weight: 700;
+        color: var(--secondary-text-color);
+        background: color-mix(in srgb, var(--card-background-color) 86%, transparent);
+        border: 1px solid color-mix(in srgb, var(--divider-color) 44%, transparent);
       }
       .morning-brief-list {
         display: grid;
         gap: 10px;
-        margin-top: 8px;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid color-mix(in srgb, var(--divider-color) 34%, transparent);
       }
       .morning-brief-item {
         display: grid;
@@ -1096,10 +1165,6 @@ class HomeBriefCard extends HTMLElement {
         font-weight: 700;
         color: var(--secondary-text-color);
         background: color-mix(in srgb, var(--divider-color) 72%, transparent);
-      }
-      .morning-brief-item-primary .morning-brief-rank {
-        color: white;
-        background: var(--primary-color);
       }
       .morning-brief-text {
         font-size: 13px;

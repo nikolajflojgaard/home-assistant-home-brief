@@ -11,9 +11,17 @@ from .const import DOMAIN
 SERVICE_GET_BRIEF = "get_brief"
 SERVICE_GET_ACTIONS = "get_actions"
 SERVICE_RESCAN = "rescan"
+SERVICE_PUBLISH_MORNING_BRIEF = "publish_morning_brief"
 
 _GET_BRIEF_SCHEMA = vol.Schema({vol.Required("entry_id"): str})
 _RESCAN_SCHEMA = vol.Schema({vol.Optional("entry_id"): str})
+_PUBLISH_MORNING_BRIEF_SCHEMA = vol.Schema(
+    {
+        vol.Required("entry_id"): str,
+        vol.Required("payload"): dict,
+        vol.Optional("source", default="service"): str,
+    }
+)
 
 
 async def async_register(hass: HomeAssistant) -> None:
@@ -43,6 +51,24 @@ async def async_register(hass: HomeAssistant) -> None:
             "top_action": stats.get("top_action"),
             "recommended_actions": stats.get("recommended_actions", []),
             "recommended_action_count": stats.get("recommended_action_count", 0),
+        }
+
+    async def _async_publish_morning_brief(call: ServiceCall) -> ServiceResponse:
+        entry_id = str(call.data["entry_id"])
+        coordinator = hass.data.get(DOMAIN, {}).get(entry_id)
+        if coordinator is None:
+            return {"ok": False, "error": "entry_not_found"}
+        published = await coordinator.async_publish_morning_brief(
+            payload=call.data.get("payload") or {},
+            source=str(call.data.get("source") or "service"),
+        )
+        await coordinator.async_request_refresh()
+        return {
+            "ok": True,
+            "entry_id": entry_id,
+            "published_at": published.get("published_at"),
+            "source": published.get("source"),
+            "keys": sorted((published.get("payload") or {}).keys()),
         }
 
     async def _async_rescan(call: ServiceCall) -> ServiceResponse:
@@ -87,6 +113,15 @@ async def async_register(hass: HomeAssistant) -> None:
             SERVICE_GET_ACTIONS,
             _async_get_actions,
             schema=_GET_BRIEF_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_PUBLISH_MORNING_BRIEF):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_PUBLISH_MORNING_BRIEF,
+            _async_publish_morning_brief,
+            schema=_PUBLISH_MORNING_BRIEF_SCHEMA,
             supports_response=SupportsResponse.ONLY,
         )
 

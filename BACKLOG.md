@@ -22,12 +22,27 @@ This repo needs an explicit iteration trail. Here it is.
 - Added a manual `home_brief.rescan` service for force-refreshing discovery without needing a full reinstall dance.
 - Exposed richer discovery metadata in diagnostics and sensor stats so fallback behavior is inspectable instead of magical.
 
-## Next up
+## Rework track
 
-### UX
+Home Brief is now moving from iterative feature additions into a broader rework track. The source-of-truth doc for that is `docs/REWORK-FOUNDATION.md`.
 
-- Ship real screenshots / demo GIFs instead of placeholders.
-- Tighten visual hierarchy further for the card's default mobile width now that it carries more agenda structure.
+### Foundation
+
+- Move scheduled brief publishing fully onto the persisted `home_brief.publish_morning_brief` path.
+- Normalize published morning-brief payload structure and freshness metadata.
+- Keep render paths stable even when runtime generators are unavailable.
+
+### Personalization
+
+- Add explicit person profile storage instead of scattering `Nikolaj` assumptions through the coordinator.
+- Add basic focus modes and category visibility preferences.
+- Add per-person weighting for personal vs household vs ambient context.
+
+### View-model + UI
+
+- Move card-facing ranking/section ordering into a dedicated view-model layer.
+- Rebuild the card around personal focus, household context, and controllable density.
+- Tighten visual hierarchy further for the card's default mobile width once the new model is in place.
 
 ### Intelligence
 
@@ -44,3 +59,4 @@ This repo needs an explicit iteration trail. Here it is.
 - Add proper frontend tests or at least fixture-driven snapshots for card rendering states.
 - Improve chores parsing for more custom sensor payload shapes if users expose richer task metadata.
 - Consider optional per-home priority tuning once the default heuristics settle.
+- Ship real screenshots / demo GIFs instead of placeholders.
