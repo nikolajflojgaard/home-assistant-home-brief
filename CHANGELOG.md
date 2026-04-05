@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 - This gives the imported brief actual editorial weight in the UI while still keeping the card compact enough to scan.
 - Product fix: the imported brief now reads more like a real briefing surface and less like a hidden payload with one visible line.
 
+## 0.6.19
+
+- Added the first real section parser + renderer for imported daily brief text inside Morning Brief.
+- The card now recognizes the named sections from the morning brief (`Global`, `Denmark / EU`, `Markets`, `Tech / AI`, `Today to watch`, `Copenhagen weather`, `If I only do 3 things today`) and renders them as numbered briefing blocks.
+- This is the agreed 30-minute chunk: parser, basic section renderer, release.
+
 ## 0.6.18
 
 - Removed the imported `Nikolaj’s tasks` and `Household` rows from the Morning Brief package surface so that section can stay focused on briefing/intelligence content instead of repeating operational task blocks already covered below.

@@ -383,6 +383,65 @@ class HomeBriefCard extends HTMLElement {
     `;
   }
 
+  _parseBriefSections(briefText) {
+    if (!briefText) return [];
+
+    const names = [
+      'Global',
+      'Denmark / EU',
+      'Markets',
+      'Tech / AI',
+      'Today to watch',
+      'Copenhagen weather',
+      'If I only do 3 things today',
+    ];
+
+    const blocks = briefText
+      .split(/\n\s*\n/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    const sections = [];
+    let current = null;
+
+    for (const block of blocks) {
+      if (/^Daily brief/i.test(block)) continue;
+      const matched = names.find((name) => block === name);
+      if (matched) {
+        current = { title: matched, body: [] };
+        sections.push(current);
+        continue;
+      }
+      if (!current) continue;
+      current.body.push(block);
+    }
+
+    return sections.filter((section) => section.body.length);
+  }
+
+  _briefSections(attrs) {
+    const pkg = attrs.daily_brief_package && typeof attrs.daily_brief_package === 'object' ? attrs.daily_brief_package : null;
+    const briefText = pkg && typeof pkg.brief_text === 'string' ? pkg.brief_text.trim() : '';
+    const sections = this._parseBriefSections(briefText);
+    if (!sections.length) return '';
+
+    return `
+      <div class="brief-sections">
+        ${sections.map((section, index) => `
+          <div class="brief-section">
+            <div class="brief-section-head">
+              <div class="brief-section-badge">${index + 1}</div>
+              <div class="brief-section-title">${this._escapeHtml(section.title)}</div>
+            </div>
+            <div class="brief-section-body">
+              ${section.body.map((part) => `<div class="brief-section-copy">${this._escapeHtml(part)}</div>`).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
   _morningBriefPanel(attrs) {
     const pkg = attrs.daily_brief_package && typeof attrs.daily_brief_package === 'object' ? attrs.daily_brief_package : null;
     const lines = Array.isArray(attrs.morning_brief_top3) ? attrs.morning_brief_top3.filter(Boolean).slice(0, 3) : [];
@@ -458,6 +517,7 @@ class HomeBriefCard extends HTMLElement {
             `).join('')}
           </div>
         ` : ''}
+        ${this._briefSections(attrs)}
         ${packageRows.length ? `
           <div class="morning-brief-package">
             ${packageRows.map((row) => `
@@ -1232,6 +1292,49 @@ class HomeBriefCard extends HTMLElement {
         margin-top: 14px;
         padding-top: 12px;
         border-top: 1px solid color-mix(in srgb, var(--divider-color) 34%, transparent);
+      }
+      .brief-sections {
+        display: grid;
+        gap: 12px;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid color-mix(in srgb, var(--divider-color) 34%, transparent);
+      }
+      .brief-section {
+        display: grid;
+        gap: 8px;
+      }
+      .brief-section-head {
+        display: grid;
+        grid-template-columns: 24px 1fr;
+        gap: 10px;
+        align-items: center;
+      }
+      .brief-section-badge {
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 800;
+        color: white;
+        background: var(--primary-color);
+      }
+      .brief-section-title {
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+      }
+      .brief-section-body {
+        display: grid;
+        gap: 8px;
+        padding-left: 34px;
+      }
+      .brief-section-copy {
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--primary-text-color);
       }
       .morning-brief-package {
         display: grid;
