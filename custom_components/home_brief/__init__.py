@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass, field
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -17,18 +18,26 @@ from .websocket_api import async_register as async_register_ws
 _LOGGER = logging.getLogger(__name__)
 
 
+@dataclass(slots=True)
+class HomeBriefRuntimeData:
+    entries: dict[str, HomeBriefCoordinator] = field(default_factory=dict)
+    ws_registered: bool = False
+    services_registered: bool = False
+    frontend_registered: bool = False
+
+
 async def async_setup(hass: HomeAssistant, _config: dict[str, Any]) -> bool:
     """Set up domain-level resources."""
-    hass.data.setdefault(DOMAIN, {})
-    if not hass.data[DOMAIN].get("ws_registered"):
+    runtime = hass.data.setdefault(DOMAIN, HomeBriefRuntimeData())
+    if not runtime.ws_registered:
         async_register_ws(hass)
-        hass.data[DOMAIN]["ws_registered"] = True
-    if not hass.data[DOMAIN].get("services_registered"):
+        runtime.ws_registered = True
+    if not runtime.services_registered:
         await async_register_services(hass)
-        hass.data[DOMAIN]["services_registered"] = True
-    if ENABLE_FRONTEND and not hass.data[DOMAIN].get("frontend_registered"):
+        runtime.services_registered = True
+    if ENABLE_FRONTEND and not runtime.frontend_registered:
         await async_register_frontend(hass)
-        hass.data[DOMAIN]["frontend_registered"] = True
+        runtime.frontend_registered = True
     return True
 
 
@@ -38,8 +47,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_load_discovery_state()
     await coordinator.async_refresh_discovery()
     await coordinator.async_config_entry_first_refresh()
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = coordinator
+    runtime = hass.data.setdefault(DOMAIN, HomeBriefRuntimeData())
+    runtime.entries[entry.entry_id] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
@@ -51,7 +60,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+        runtime = hass.data.get(DOMAIN)
+        if runtime is not None:
+            runtime.entries.pop(entry.entry_id, None)
     return unload_ok
 
 

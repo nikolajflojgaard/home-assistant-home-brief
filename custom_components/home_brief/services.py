@@ -25,16 +25,24 @@ _PUBLISH_MORNING_BRIEF_SCHEMA = vol.Schema(
 
 
 def _coordinator_for_entry_id(hass: HomeAssistant, entry_id: str):
-    domain_data = hass.data.get(DOMAIN, {})
-    coordinator = domain_data.get(entry_id)
+    runtime = hass.data.get(DOMAIN)
+    entries = getattr(runtime, "entries", {}) if runtime is not None else {}
+    coordinator = entries.get(entry_id)
     if coordinator is not None:
         return coordinator
 
     entry = hass.config_entries.async_get_entry(entry_id)
-    if entry is None or entry.domain != DOMAIN:
-        return None
+    if entry is not None and entry.domain == DOMAIN:
+        coordinator = entries.get(entry.entry_id)
+        if coordinator is not None:
+            return coordinator
 
-    return domain_data.get(entry.entry_id)
+    for loaded_entry in hass.config_entries.async_entries(DOMAIN):
+        coordinator = entries.get(loaded_entry.entry_id)
+        if coordinator is not None and loaded_entry.entry_id == entry_id:
+            return coordinator
+
+    return None
 
 
 async def async_register(hass: HomeAssistant) -> None:
@@ -86,7 +94,8 @@ async def async_register(hass: HomeAssistant) -> None:
 
     async def _async_rescan(call: ServiceCall) -> ServiceResponse:
         entry_id = call.data.get("entry_id")
-        coordinators = hass.data.get(DOMAIN, {})
+        runtime = hass.data.get(DOMAIN)
+        coordinators = getattr(runtime, "entries", {}) if runtime is not None else {}
         targets = []
         if entry_id:
             coordinator = _coordinator_for_entry_id(hass, str(entry_id))
@@ -94,7 +103,7 @@ async def async_register(hass: HomeAssistant) -> None:
                 return {"ok": False, "error": "entry_not_found"}
             targets = [coordinator]
         else:
-            targets = [value for key, value in coordinators.items() if key not in {"ws_registered", "services_registered", "frontend_registered"}]
+            targets = list(coordinators.values())
 
         results: list[dict[str, object]] = []
         for coordinator in targets:

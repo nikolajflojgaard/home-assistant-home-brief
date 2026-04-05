@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.3
+
+- Reworked Home Brief runtime bookkeeping so loaded coordinators live in a dedicated runtime structure instead of sharing a loose dict with service/frontend registration flags.
+- Hardened service-side coordinator resolution for `publish_morning_brief`, `get_brief`, `get_actions`, and `rescan`, which should stop live service calls from missing a loaded entry due to runtime state shape issues.
+- This is a production hotfix aimed directly at the morning-brief publish loop failing even after the service was registered live.
+
 ## 0.6.1
 
 - Added the first explicit person-profile foundation to Home Brief storage, seeded with a default `Nikolaj` profile instead of leaving personalization as an implicit coordinator assumption.
