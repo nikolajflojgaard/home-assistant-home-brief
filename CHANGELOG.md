@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.11
+
+- Fixed the card so imported daily brief package summaries get their own visible summary line instead of being effectively hidden whenever Top 3 bullets are also present.
+- This makes the real brief package easier to recognize in the UI and stops the imported summary from being flattened into the old Morning Brief lead treatment.
+- Small but important product fix: if the package carries a real summary, the card should actually show it.
+
 ## 0.6.10
 
 - Fixed the exposed Morning Brief publish metadata so Home Brief now reports the actual latest imported daily-brief package timestamp/source instead of showing stale publish information after a successful package send.

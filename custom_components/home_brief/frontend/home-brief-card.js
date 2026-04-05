@@ -407,6 +407,9 @@ class HomeBriefCard extends HTMLElement {
     ].filter(Boolean);
 
     const meta = attrs.morning_brief_meta ? `<div class="morning-brief-meta">${this._escapeHtml(attrs.morning_brief_meta)}</div>` : '';
+    const summaryBlock = packageSummary && (!lines.length || packageSummary !== lines[0])
+      ? `<div class="morning-brief-summary">${this._escapeHtml(packageSummary)}</div>`
+      : '';
     const lead = this._escapeHtml(lines[0] || packageSummary);
     const rest = lines.slice(1);
     const nikolajTasks = Array.isArray(pkg?.nikolaj_tasks) ? pkg.nikolaj_tasks.slice(0, 3) : [];
@@ -431,6 +434,7 @@ class HomeBriefCard extends HTMLElement {
         <div class="morning-brief-header">
           <div>
             <div class="morning-brief-eyebrow">Morning brief</div>
+            ${summaryBlock}
             <div class="morning-brief-lead">${lead}</div>
             ${meta}
           </div>
@@ -1175,6 +1179,12 @@ class HomeBriefCard extends HTMLElement {
         color: var(--secondary-text-color);
         font-weight: 700;
         margin-bottom: 8px;
+      }
+      .morning-brief-summary {
+        margin-bottom: 8px;
+        font-size: 13px;
+        line-height: 1.45;
+        color: var(--secondary-text-color);
       }
       .morning-brief-lead {
         font-size: 18px;
