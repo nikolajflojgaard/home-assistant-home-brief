@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.9
+
+- Fixed Home Brief’s consumption of the newly published daily brief package so the card/state now reads package content directly from the stored published payload instead of reconstructing partial fields from older morning-brief assumptions.
+- This unblocks the structured daily brief package from actually showing up with its imported summary/task/solar/weather rows after the new dedicated action path succeeds.
+- Production hotfix: the send path was live in 0.6.8, but the package consumer still needed to be taught the new shape.
+
 ## 0.6.8
 
 - Added a dedicated `home_brief.publish_daily_brief_package` action so the daily brief now has an intentional send path into Home Brief instead of pretending the richer package is just a generic morning-brief payload.

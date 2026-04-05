@@ -1484,25 +1484,25 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         weather_payload = morning_brief.get("weather") if isinstance(morning_brief, dict) else {}
         weather_state = weather_payload.get("state") if isinstance(weather_payload, dict) else None
         top3_result = top3_payload.get("result") if isinstance(top3_payload, dict) else {}
+        morning_brief_published_at = stored.morning_brief.published_at or None
+        morning_brief_source = stored.morning_brief.source or ("runtime_bridge" if morning_brief else None)
+        normalized_top3_lines = [str(line).strip() for line in top3_lines] if isinstance(top3_lines, list) else []
         imported_brief_package = {
-            "summary": morning_brief.get("summary") if isinstance(morning_brief.get("summary"), str) else None,
-            "top3": normalized_top3_lines if 'normalized_top3_lines' in locals() else [],
-            "nikolaj_tasks": nikolaj_chores[:3],
-            "household_tasks": household_chores[:3],
+            "summary": str(morning_brief.get("summary") or "").strip() or None,
+            "top3": normalized_top3_lines,
+            "nikolaj_tasks": self._normalize_chore_items((morning_brief.get("nikolaj") or {}).get("attributes", {}).get("tasks"))[:3] if isinstance(morning_brief.get("nikolaj"), dict) else [],
+            "household_tasks": self._normalize_chore_items((morning_brief.get("household") or {}).get("attributes", {}).get("tasks"))[:3] if isinstance(morning_brief.get("household"), dict) else [],
             "weather": {
                 "state": weather_state,
-                "temperature": weather_payload.get("temperature") if isinstance(weather_payload, dict) else None,
+                "temperature": weather_payload.get("attributes", {}).get("temperature") if isinstance(weather_payload, dict) else None,
             },
             "solar": {
                 "today_kwh": morning_brief.get("solar_today", {}).get("state") if isinstance(morning_brief.get("solar_today"), dict) else None,
                 "yesterday_kwh": morning_brief.get("solar_yesterday_kwh") if isinstance(morning_brief, dict) else None,
             },
-            "source": stored.morning_brief.source or None,
-            "published_at": stored.morning_brief.published_at or None,
+            "source": morning_brief_source,
+            "published_at": morning_brief_published_at,
         }
-        morning_brief_published_at = stored.morning_brief.published_at or None
-        morning_brief_source = stored.morning_brief.source or ("runtime_bridge" if morning_brief else None)
-        normalized_top3_lines = [str(line).strip() for line in top3_lines] if isinstance(top3_lines, list) else []
         morning_brief_meta_parts = [
             f"Weather: {weather_state}" if weather_state else None,
             f"Top 3 ready" if normalized_top3_lines else None,
