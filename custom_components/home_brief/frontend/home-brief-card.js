@@ -265,20 +265,18 @@ class HomeBriefCard extends HTMLElement {
 
   _focusItems(attrs) {
     const items = [];
+    const chores = (Array.isArray(attrs.household_chores) ? attrs.household_chores : []).slice(0, 3);
 
-    if ((attrs.nikolaj_chores_count ?? 0) > 0) {
-      items.push({
-        title: attrs.nikolaj_chores_summary || `${attrs.nikolaj_chores_count} Nikolaj task${attrs.nikolaj_chores_count === 1 ? '' : 's'} queued`,
-        meta: 'Nikolaj focus',
-        tone: 'accent',
-      });
-    }
-
-    if ((attrs.household_chores_count ?? 0) > 0) {
-      items.push({
-        title: attrs.household_chores_summary || `${attrs.household_chores_count} household task${attrs.household_chores_count === 1 ? '' : 's'} queued`,
-        meta: 'Household focus',
-        tone: 'accent',
+    if (chores.length) {
+      chores.forEach((chore, index) => {
+        const names = Array.isArray(chore.assignee_names) ? chore.assignee_names.filter(Boolean) : [];
+        const date = chore.date ? String(chore.date) : null;
+        const meta = [names.length ? names.join(', ') : null, date].filter(Boolean).join(' • ') || 'Household focus';
+        items.push({
+          title: String(chore.title || `Household task ${index + 1}`),
+          meta,
+          tone: index === 0 ? 'accent' : 'neutral',
+        });
       });
     }
 
@@ -364,6 +362,7 @@ class HomeBriefCard extends HTMLElement {
     return `
       <section class="slot-panel">
         <div class="focus-title">Today by slot</div>
+        ${(attrs.household_today_chores_count ?? 0) === 0 ? `<div class="focus-meta">No tasks due today</div>` : ''}
         <div class="slot-list">
           ${rows.map((row) => {
             const key = String(row.slot || '').toLowerCase();
@@ -454,7 +453,7 @@ class HomeBriefCard extends HTMLElement {
 
     return `
       <section class="focus-panel">
-        <div class="focus-title">Next up</div>
+        <div class="focus-title">Household focus</div>
         <div class="focus-list compact">
           ${filtered.map((item, index) => `
             <div class="focus-item focus-${item.tone} ${index === 0 ? 'focus-primary' : ''}">

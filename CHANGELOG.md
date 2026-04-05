@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.6
+
+- Reworked the `Household focus` section so it now lists the actual household tasks with assignee names instead of leaning on a Nikolaj-specific summary path.
+- Fixed `Today by slot` to use only chores due today, which removes the incorrect tomorrow leakage that made the section look polished but wrong.
+- This is a correctness release: less personalized leakage, more literal household context, and slot grouping that matches the label on the card.
+
 ## 0.6.5
 
 - Reduced overlap between Morning Brief, Suggested Move, Next up, and the leftover supporting signals by suppressing duplicate lines at the coordinator layer before they reach the card.

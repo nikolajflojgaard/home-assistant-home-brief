@@ -779,9 +779,20 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             return slot
         return "anytime"
 
+    def _is_today_chore(self, chore: dict[str, Any]) -> bool:
+        raw = str(chore.get("date") or "").strip()
+        if not raw:
+            return False
+        try:
+            return date.fromisoformat(raw) == datetime.now().astimezone().date()
+        except ValueError:
+            return False
+
     def _build_slot_summary(self, chores: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
         slots: dict[str, list[dict[str, Any]]] = {"am": [], "pm": [], "anytime": []}
         for chore in chores:
+            if not self._is_today_chore(chore):
+                continue
             slots.setdefault(self._slot_key(chore), []).append(chore)
         return slots
 
@@ -1403,6 +1414,7 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
 
         household_chores, chores_entity, chores_summary = self._household_chores()
         nikolaj_chores, nikolaj_chores_entity, nikolaj_chores_summary = self._person_specific_chores()
+        household_today_chores = [chore for chore in household_chores if self._is_today_chore(chore)]
         household_chore_slots = self._build_slot_summary(household_chores)
         household_overlap_signals, household_overlap_summaries = self._household_contention(household_chores)
         personal_slot_load = self._personal_slot_load(household_chores)
@@ -1523,6 +1535,8 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             "temperature_entity": temperature_entity,
             "household_chores": household_chores,
             "household_chores_count": len(household_chores),
+            "household_today_chores": household_today_chores,
+            "household_today_chores_count": len(household_today_chores),
             "household_chores_entity": chores_entity,
             "household_chores_summary": chores_summary,
             "nikolaj_chores": nikolaj_chores,
