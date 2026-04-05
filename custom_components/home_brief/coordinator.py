@@ -1474,15 +1474,44 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
         top3_result = top3_payload.get("result") if isinstance(top3_payload, dict) else {}
         morning_brief_published_at = stored.morning_brief.published_at or None
         morning_brief_source = stored.morning_brief.source or ("runtime_bridge" if morning_brief else None)
+        normalized_top3_lines = [str(line).strip() for line in top3_lines] if isinstance(top3_lines, list) else []
         morning_brief_meta_parts = [
             f"Weather: {weather_state}" if weather_state else None,
-            f"Top 3 ready" if isinstance(top3_lines, list) and top3_lines else None,
-            f"{len(top3_result.get('topThree', []))} priorities" if isinstance(top3_result, dict) and isinstance(top3_result.get('topThree'), list) else None,
+            f"Top 3 ready" if normalized_top3_lines else None,
+            f"{len(normalized_top3_lines)} priorities" if normalized_top3_lines else None,
         ]
         morning_brief_meta = " • ".join(part for part in morning_brief_meta_parts if part)
-        summary = deduped[0]
+
+        duplicate_blocks = {
+            *(str(item.title or "").strip().lower() for item in recommended_actions),
+            *(str(item.summary or "").strip().lower() for item in recommended_actions),
+            *(str(line).strip().lower() for line in normalized_top3_lines),
+        }
+        if chores_summary:
+            duplicate_blocks.add(str(chores_summary).strip().lower())
+        if nikolaj_chores_summary:
+            duplicate_blocks.add(str(nikolaj_chores_summary).strip().lower())
+        if waste_pickup_summary:
+            duplicate_blocks.add(str(waste_pickup_summary[1]).strip().lower())
+        for slot_summary in household_slot_pressure_summaries:
+            duplicate_blocks.add(str(slot_summary).strip().lower())
+
+        refined_insights: list[str] = []
+        refined_seen: set[str] = set()
+        for text in deduped:
+            normalized = str(text).strip().lower()
+            if not normalized:
+                continue
+            if normalized in refined_seen:
+                continue
+            if normalized in duplicate_blocks and text != deduped[0]:
+                continue
+            refined_seen.add(normalized)
+            refined_insights.append(text)
+
+        summary = refined_insights[0] if refined_insights else deduped[0]
         stats = {
-            "insight_count": len(deduped),
+            "insight_count": len(refined_insights),
             "power_price": price,
             "solar_power": solar,
             "home_power": home_power,
@@ -1557,4 +1586,4 @@ class HomeBriefCoordinator(DataUpdateCoordinator[BriefData]):
             "last_build_at": datetime.now(UTC).isoformat(),
         }
         stats.update(weather_stats)
-        return BriefData(summary=summary, insights=deduped, stats=stats)
+        return BriefData(summary=summary, insights=refined_insights, stats=stats)

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.5
+
+- Reduced overlap between Morning Brief, Suggested Move, Next up, and the leftover supporting signals by suppressing duplicate lines at the coordinator layer before they reach the card.
+- Tightened the card hierarchy so Morning Brief remains primary, while Next up / action / slot context sit in a cleaner two-column follow-up structure instead of one long repeated stack.
+- This is a product cleanup release: less repetition, clearer information density, and a better foundation for expanding the Morning Brief surface without turning the card into a noisy dump.
+
 ## 0.6.4
 
 - Fixed the sensor platform to read coordinators from the new runtime registry shape instead of the old `hass.data[DOMAIN][entry_id]` dict path.

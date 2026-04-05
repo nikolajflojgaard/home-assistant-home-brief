@@ -342,7 +342,7 @@ class HomeBriefCard extends HTMLElement {
 
     return `
       <section class="signal-stack" aria-label="Supporting signals">
-        <div class="focus-title">Also worth noting</div>
+        <div class="focus-title">Background</div>
         ${insights.map((item) => `
           <div class="signal-row">
             <span class="signal-dot"></span>
@@ -439,11 +439,24 @@ class HomeBriefCard extends HTMLElement {
     const items = this._focusItems(attrs);
     if (!items.length) return '';
 
+    const morningLines = new Set(
+      (Array.isArray(attrs.morning_brief_top3) ? attrs.morning_brief_top3 : [])
+        .map((item) => String(item || '').trim().toLowerCase())
+        .filter(Boolean)
+    );
+
+    const filtered = items.filter((item) => {
+      const title = String(item.title || '').trim().toLowerCase();
+      return title && !morningLines.has(title);
+    });
+
+    if (!filtered.length) return '';
+
     return `
       <section class="focus-panel">
         <div class="focus-title">Next up</div>
-        <div class="focus-list">
-          ${items.map((item, index) => `
+        <div class="focus-list compact">
+          ${filtered.map((item, index) => `
             <div class="focus-item focus-${item.tone} ${index === 0 ? 'focus-primary' : ''}">
               <div class="focus-copy">
                 <div class="focus-headline">${this._escapeHtml(item.title)}</div>
@@ -482,6 +495,9 @@ class HomeBriefCard extends HTMLElement {
     const actionStrings = [attrs?.top_action?.title, attrs?.top_action?.summary]
       .filter(Boolean)
       .map((item) => String(item).trim().toLowerCase());
+    const morningStrings = (Array.isArray(attrs.morning_brief_top3) ? attrs.morning_brief_top3 : [])
+      .map((item) => String(item || '').trim().toLowerCase())
+      .filter(Boolean);
     const filteredInsights = insights.filter((item, index) => {
       const normalized = String(item || '').trim().toLowerCase();
       if (!normalized || index === 0) return false;
@@ -490,10 +506,11 @@ class HomeBriefCard extends HTMLElement {
       if (attrs.nikolaj_chores_summary && normalized === String(attrs.nikolaj_chores_summary).trim().toLowerCase()) return false;
       if (attrs.waste_pickup_summary && normalized === String(attrs.waste_pickup_summary).trim().toLowerCase()) return false;
       if (actionStrings.includes(normalized)) return false;
+      if (morningStrings.includes(normalized)) return false;
       if (normalized.startsWith('best move now:') || normalized.startsWith('suggested move:')) return false;
       seen.add(normalized);
       return true;
-    }).slice(0, Math.min(2, Math.max(0, maxItems - 1)));
+    }).slice(0, Math.min(2, Math.max(0, maxItems - 2)));
 
     root.innerHTML = `
       <div class="content tone-${tone}">
@@ -520,11 +537,15 @@ class HomeBriefCard extends HTMLElement {
 
         ${this._morningBriefPanel(attrs)}
 
-        ${this._focusPanel(attrs)}
-
-        ${this._slotPanel(attrs)}
-
-        ${this._actionPanel(attrs)}
+        <div class="brief-grid">
+          <div class="brief-main">
+            ${this._focusPanel(attrs)}
+            ${this._actionPanel(attrs)}
+          </div>
+          <div class="brief-side">
+            ${this._slotPanel(attrs)}
+          </div>
+        </div>
 
         ${filteredInsights.length && this._config.show_secondary ? this._signalRows(filteredInsights) : ''}
 
@@ -1022,9 +1043,22 @@ class HomeBriefCard extends HTMLElement {
         font-weight: 700;
         margin-bottom: 10px;
       }
+      .brief-grid {
+        display: grid;
+        gap: 14px;
+        margin-top: 16px;
+      }
+      .brief-main,
+      .brief-side {
+        display: grid;
+        gap: 14px;
+      }
       .focus-list {
         display: grid;
         gap: 8px;
+      }
+      .focus-list.compact {
+        gap: 6px;
       }
       .focus-item {
         padding: 12px 14px;
@@ -1231,6 +1265,12 @@ class HomeBriefCard extends HTMLElement {
         display: grid;
         gap: 5px;
         font-size: 12px;
+      }
+      @media (min-width: 900px) {
+        .brief-grid {
+          grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+          align-items: start;
+        }
       }
       @media (max-width: 760px) {
         .grid.with-agenda {
