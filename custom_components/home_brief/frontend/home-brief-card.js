@@ -1276,7 +1276,7 @@ class HomeBriefCard extends HTMLElement {
       }
       .morning-brief-header {
         display: grid;
-        gap: 14px;
+        gap: 16px;
       }
       .morning-brief-eyebrow {
         font-size: 11px;
@@ -1287,26 +1287,31 @@ class HomeBriefCard extends HTMLElement {
         margin-bottom: 8px;
       }
       .morning-brief-summary {
-        margin-bottom: 10px;
-        font-size: 13px;
-        line-height: 1.5;
+        margin-bottom: 6px;
+        font-size: 12px;
+        line-height: 1.45;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
         color: var(--secondary-text-color);
+        font-weight: 700;
       }
       .morning-brief-synopsis {
-        margin-bottom: 12px;
+        margin-bottom: 14px;
         font-size: 13px;
-        line-height: 1.6;
+        line-height: 1.62;
         color: var(--primary-text-color);
-        opacity: 0.92;
+        opacity: 0.9;
+        max-width: 60ch;
       }
       .morning-brief-lead {
-        font-size: 19px;
-        line-height: 1.32;
-        font-weight: 700;
-        letter-spacing: -0.02em;
+        font-size: 20px;
+        line-height: 1.28;
+        font-weight: 720;
+        letter-spacing: -0.025em;
+        max-width: 34ch;
       }
       .morning-brief-meta {
-        margin-top: 8px;
+        margin-top: 10px;
         color: var(--secondary-text-color);
         font-size: 12px;
         line-height: 1.5;

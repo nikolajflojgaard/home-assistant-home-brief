@@ -8,6 +8,11 @@ All notable changes to this project will be documented in this file.
 - This gives the imported brief actual editorial weight in the UI while still keeping the card compact enough to scan.
 - Product fix: the imported brief now reads more like a real briefing surface and less like a hidden payload with one visible line.
 
+## 0.6.28
+
+- Rebalanced the top of Morning Brief so the summary reads like a real kicker, the synopsis reads like an explanatory layer, and the lead line keeps stronger hero emphasis instead of everything feeling stacked at the same weight.
+- This is a tiny hierarchy-only polish slice focused on the top Morning Brief stack.
+
 ## 0.6.27
 
 - Refined the inside of Morning Brief section panels with looser body spacing, softer guide rules, and calmer body/bullet text tone so the imported briefing content reads more comfortably.
