@@ -419,6 +419,29 @@ class HomeBriefCard extends HTMLElement {
     return sections.filter((section) => section.body.length);
   }
 
+  _renderBriefSectionPart(part) {
+    const lines = String(part || '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    const bulletLines = lines.filter((line) => line.startsWith('•'));
+    if (bulletLines.length === lines.length) {
+      return `
+        <div class="brief-section-copy brief-section-copy-bullets">
+          ${bulletLines.map((line) => `
+            <div class="brief-bullet-row">
+              <span class="brief-bullet-dot"></span>
+              <span class="brief-bullet-text">${this._escapeHtml(line.replace(/^•\s*/, ''))}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    return `<div class="brief-section-copy">${this._escapeHtml(lines.join(' '))}</div>`;
+  }
+
   _briefSections(attrs) {
     const pkg = attrs.daily_brief_package && typeof attrs.daily_brief_package === 'object' ? attrs.daily_brief_package : null;
     const briefText = pkg && typeof pkg.brief_text === 'string' ? pkg.brief_text.trim() : '';
@@ -434,7 +457,7 @@ class HomeBriefCard extends HTMLElement {
               <div class="brief-section-title">${this._escapeHtml(section.title)}</div>
             </div>
             <div class="brief-section-body">
-              ${section.body.map((part) => `<div class="brief-section-copy">${this._escapeHtml(part)}</div>`).join('')}
+              ${section.body.map((part) => this._renderBriefSectionPart(part)).join('')}
             </div>
           </div>
         `).join('')}
@@ -1333,7 +1356,29 @@ class HomeBriefCard extends HTMLElement {
       }
       .brief-section-copy {
         font-size: 13px;
-        line-height: 1.5;
+        line-height: 1.6;
+        color: var(--primary-text-color);
+      }
+      .brief-section-copy-bullets {
+        display: grid;
+        gap: 8px;
+      }
+      .brief-bullet-row {
+        display: grid;
+        grid-template-columns: 8px 1fr;
+        gap: 10px;
+        align-items: start;
+      }
+      .brief-bullet-dot {
+        width: 8px;
+        height: 8px;
+        margin-top: 6px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--primary-color) 78%, white 22%);
+      }
+      .brief-bullet-text {
+        font-size: 13px;
+        line-height: 1.55;
         color: var(--primary-text-color);
       }
       .morning-brief-package {

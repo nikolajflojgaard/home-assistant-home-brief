@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 - This gives the imported brief actual editorial weight in the UI while still keeping the card compact enough to scan.
 - Product fix: the imported brief now reads more like a real briefing surface and less like a hidden payload with one visible line.
 
+## 0.6.20
+
+- Improved imported Morning Brief section rendering so bullet-heavy sections now display as actual bullet rows instead of collapsing into dense paragraph blobs.
+- Tightened section-body typography and spacing to make the numbered briefing sections more readable and more obviously structured.
+- This is polish slice 1: make section bodies read properly.
+
 ## 0.6.19
 
 - Added the first real section parser + renderer for imported daily brief text inside Morning Brief.
