@@ -8,6 +8,11 @@ All notable changes to this project will be documented in this file.
 - This gives the imported brief actual editorial weight in the UI while still keeping the card compact enough to scan.
 - Product fix: the imported brief now reads more like a real briefing surface and less like a hidden payload with one visible line.
 
+## 0.6.24
+
+- Polished Morning Brief section presentation with clearer separators, stronger numbered markers, calmer uppercase section labels, and improved body width/line rhythm.
+- This is a visible UI-only enhancement slice: same content, better editorial feel.
+
 ## 0.6.23
 
 - Hardened Morning Brief section rendering for partial or messy imported brief packages: empty sections are skipped, long bodies are clipped more safely, bullet-heavy blocks are rendered consistently, and short/sectionless packages fall back to a clean summary block instead of looking broken.
