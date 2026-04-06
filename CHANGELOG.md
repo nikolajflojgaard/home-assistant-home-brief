@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 - This gives the imported brief actual editorial weight in the UI while still keeping the card compact enough to scan.
 - Product fix: the imported brief now reads more like a real briefing surface and less like a hidden payload with one visible line.
 
+## 0.6.21
+
+- Improved Morning Brief vertical rhythm with cleaner spacing between summary, synopsis, lead line, Top 3, numbered sections, and package metadata.
+- Increased internal breathing room and calmer separation lines so the imported briefing stack reads more like a designed surface and less like one dense box.
+- This is polish slice 2: improve vertical rhythm.
+
 ## 0.6.20
 
 - Improved imported Morning Brief section rendering so bullet-heavy sections now display as actual bullet rows instead of collapsing into dense paragraph blobs.

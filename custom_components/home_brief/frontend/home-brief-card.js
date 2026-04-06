@@ -1247,9 +1247,9 @@ class HomeBriefCard extends HTMLElement {
         line-height: 1.45;
       }
       .morning-brief-panel {
-        margin-top: 16px;
-        padding: 16px;
-        border-radius: 22px;
+        margin-top: 18px;
+        padding: 18px;
+        border-radius: 24px;
         border: 1px solid color-mix(in srgb, var(--primary-color) 16%, transparent);
         background:
           linear-gradient(180deg, color-mix(in srgb, var(--primary-color) 7%, var(--card-background-color)), color-mix(in srgb, var(--primary-color) 3%, var(--card-background-color)));
@@ -1257,7 +1257,7 @@ class HomeBriefCard extends HTMLElement {
       }
       .morning-brief-header {
         display: grid;
-        gap: 12px;
+        gap: 14px;
       }
       .morning-brief-eyebrow {
         font-size: 11px;
@@ -1268,29 +1268,29 @@ class HomeBriefCard extends HTMLElement {
         margin-bottom: 8px;
       }
       .morning-brief-summary {
-        margin-bottom: 8px;
-        font-size: 13px;
-        line-height: 1.45;
-        color: var(--secondary-text-color);
-      }
-      .morning-brief-synopsis {
         margin-bottom: 10px;
         font-size: 13px;
         line-height: 1.5;
+        color: var(--secondary-text-color);
+      }
+      .morning-brief-synopsis {
+        margin-bottom: 12px;
+        font-size: 13px;
+        line-height: 1.6;
         color: var(--primary-text-color);
         opacity: 0.92;
       }
       .morning-brief-lead {
-        font-size: 18px;
-        line-height: 1.3;
+        font-size: 19px;
+        line-height: 1.32;
         font-weight: 700;
         letter-spacing: -0.02em;
       }
       .morning-brief-meta {
-        margin-top: 6px;
+        margin-top: 8px;
         color: var(--secondary-text-color);
         font-size: 12px;
-        line-height: 1.45;
+        line-height: 1.5;
       }
       .morning-brief-chips {
         display: flex;
@@ -1311,21 +1311,21 @@ class HomeBriefCard extends HTMLElement {
       }
       .morning-brief-list {
         display: grid;
-        gap: 10px;
-        margin-top: 14px;
-        padding-top: 12px;
+        gap: 12px;
+        margin-top: 18px;
+        padding-top: 14px;
         border-top: 1px solid color-mix(in srgb, var(--divider-color) 34%, transparent);
       }
       .brief-sections {
         display: grid;
-        gap: 12px;
-        margin-top: 14px;
-        padding-top: 12px;
+        gap: 14px;
+        margin-top: 18px;
+        padding-top: 14px;
         border-top: 1px solid color-mix(in srgb, var(--divider-color) 34%, transparent);
       }
       .brief-section {
         display: grid;
-        gap: 8px;
+        gap: 10px;
       }
       .brief-section-head {
         display: grid;
@@ -1351,7 +1351,7 @@ class HomeBriefCard extends HTMLElement {
       }
       .brief-section-body {
         display: grid;
-        gap: 8px;
+        gap: 10px;
         padding-left: 34px;
       }
       .brief-section-copy {
@@ -1384,8 +1384,8 @@ class HomeBriefCard extends HTMLElement {
       .morning-brief-package {
         display: grid;
         gap: 10px;
-        margin-top: 14px;
-        padding-top: 12px;
+        margin-top: 18px;
+        padding-top: 14px;
         border-top: 1px solid color-mix(in srgb, var(--divider-color) 34%, transparent);
       }
       .morning-brief-package-row {
