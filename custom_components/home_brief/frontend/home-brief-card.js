@@ -1348,12 +1348,10 @@ class HomeBriefCard extends HTMLElement {
       .brief-section {
         display: grid;
         gap: 10px;
-        padding-top: 12px;
-        border-top: 1px dashed color-mix(in srgb, var(--divider-color) 40%, transparent);
-      }
-      .brief-section:first-child {
-        padding-top: 0;
-        border-top: 0;
+        padding: 12px;
+        border-radius: 16px;
+        background: color-mix(in srgb, var(--card-background-color) 82%, transparent);
+        border: 1px solid color-mix(in srgb, var(--divider-color) 28%, transparent);
       }
       .brief-section-head {
         display: grid;
@@ -1384,8 +1382,7 @@ class HomeBriefCard extends HTMLElement {
       .brief-section-body {
         display: grid;
         gap: 10px;
-        padding-left: 34px;
-        border-left: 1px solid color-mix(in srgb, var(--divider-color) 28%, transparent);
+        border-left: 1px solid color-mix(in srgb, var(--divider-color) 24%, transparent);
         margin-left: 11px;
         padding-bottom: 2px;
         padding-left: 22px;
