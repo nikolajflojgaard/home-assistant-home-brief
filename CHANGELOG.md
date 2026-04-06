@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 - This gives the imported brief actual editorial weight in the UI while still keeping the card compact enough to scan.
 - Product fix: the imported brief now reads more like a real briefing surface and less like a hidden payload with one visible line.
 
+## 0.6.22
+
+- Reduced lower-card duplication by using imported Morning Brief package coverage to suppress overlapping items in `Household focus` and `Background` when Morning Brief already covers the same ideas.
+- This keeps the richer Morning Brief from fighting the lower sections once imported briefing content is present.
+- This is polish slice 3: reduce noise below Morning Brief.
+
 ## 0.6.21
 
 - Improved Morning Brief vertical rhythm with cleaner spacing between summary, synopsis, lead line, Top 3, numbered sections, and package metadata.

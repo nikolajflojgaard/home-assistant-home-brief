@@ -555,19 +555,25 @@ class HomeBriefCard extends HTMLElement {
     `;
   }
 
+  _morningCoverage(attrs) {
+    const pkg = attrs.daily_brief_package && typeof attrs.daily_brief_package === 'object' ? attrs.daily_brief_package : null;
+    const sectionsText = Array.isArray(pkg?.top3) ? pkg.top3 : [];
+    const summaryParts = [pkg?.summary, pkg?.brief_text, ...(Array.isArray(attrs.morning_brief_top3) ? attrs.morning_brief_top3 : []), ...sectionsText]
+      .map((item) => String(item || '').trim().toLowerCase())
+      .filter(Boolean);
+    return new Set(summaryParts);
+  }
+
   _focusPanel(attrs) {
     const items = this._focusItems(attrs);
     if (!items.length) return '';
 
-    const morningLines = new Set(
-      (Array.isArray(attrs.morning_brief_top3) ? attrs.morning_brief_top3 : [])
-        .map((item) => String(item || '').trim().toLowerCase())
-        .filter(Boolean)
-    );
+    const morningCoverage = this._morningCoverage(attrs);
 
     const filtered = items.filter((item) => {
       const title = String(item.title || '').trim().toLowerCase();
-      return title && !morningLines.has(title);
+      const meta = String(item.meta || '').trim().toLowerCase();
+      return title && !morningCoverage.has(title) && !morningCoverage.has(meta);
     });
 
     if (!filtered.length) return '';
@@ -615,9 +621,7 @@ class HomeBriefCard extends HTMLElement {
     const actionStrings = [attrs?.top_action?.title, attrs?.top_action?.summary]
       .filter(Boolean)
       .map((item) => String(item).trim().toLowerCase());
-    const morningStrings = (Array.isArray(attrs.morning_brief_top3) ? attrs.morning_brief_top3 : [])
-      .map((item) => String(item || '').trim().toLowerCase())
-      .filter(Boolean);
+    const morningCoverage = this._morningCoverage(attrs);
     const filteredInsights = insights.filter((item, index) => {
       const normalized = String(item || '').trim().toLowerCase();
       if (!normalized || index === 0) return false;
@@ -626,7 +630,7 @@ class HomeBriefCard extends HTMLElement {
       if (attrs.nikolaj_chores_summary && normalized === String(attrs.nikolaj_chores_summary).trim().toLowerCase()) return false;
       if (attrs.waste_pickup_summary && normalized === String(attrs.waste_pickup_summary).trim().toLowerCase()) return false;
       if (actionStrings.includes(normalized)) return false;
-      if (morningStrings.includes(normalized)) return false;
+      if (morningCoverage.has(normalized)) return false;
       if (normalized.startsWith('best move now:') || normalized.startsWith('suggested move:')) return false;
       seen.add(normalized);
       return true;
