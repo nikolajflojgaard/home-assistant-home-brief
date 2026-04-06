@@ -425,8 +425,10 @@ class HomeBriefCard extends HTMLElement {
       .map((line) => line.trim())
       .filter(Boolean);
 
-    const bulletLines = lines.filter((line) => line.startsWith('•'));
-    if (bulletLines.length === lines.length) {
+    if (!lines.length) return '';
+
+    const bulletLines = lines.filter((line) => line.startsWith('•')).slice(0, 4);
+    if (bulletLines.length === lines.length || bulletLines.length >= 2) {
       return `
         <div class="brief-section-copy brief-section-copy-bullets">
           ${bulletLines.map((line) => `
@@ -439,14 +441,27 @@ class HomeBriefCard extends HTMLElement {
       `;
     }
 
-    return `<div class="brief-section-copy">${this._escapeHtml(lines.join(' '))}</div>`;
+    const text = lines.join(' ');
+    const clipped = text.length > 420 ? `${text.slice(0, 417).trim()}…` : text;
+    return `<div class="brief-section-copy">${this._escapeHtml(clipped)}</div>`;
   }
 
   _briefSections(attrs) {
     const pkg = attrs.daily_brief_package && typeof attrs.daily_brief_package === 'object' ? attrs.daily_brief_package : null;
     const briefText = pkg && typeof pkg.brief_text === 'string' ? pkg.brief_text.trim() : '';
-    const sections = this._parseBriefSections(briefText);
-    if (!sections.length) return '';
+    const sections = this._parseBriefSections(briefText)
+      .map((section) => ({
+        ...section,
+        body: (Array.isArray(section.body) ? section.body : []).filter(Boolean),
+      }))
+      .filter((section) => section.body.length);
+
+    if (!sections.length) {
+      const fallback = String(pkg?.summary || '').trim();
+      return fallback
+        ? `<div class="brief-sections brief-sections-fallback"><div class="brief-section-copy">${this._escapeHtml(fallback)}</div></div>`
+        : '';
+    }
 
     return `
       <div class="brief-sections">
@@ -457,7 +472,7 @@ class HomeBriefCard extends HTMLElement {
               <div class="brief-section-title">${this._escapeHtml(section.title)}</div>
             </div>
             <div class="brief-section-body">
-              ${section.body.map((part) => this._renderBriefSectionPart(part)).join('')}
+              ${section.body.slice(0, 3).map((part) => this._renderBriefSectionPart(part)).join('')}
             </div>
           </div>
         `).join('')}
@@ -1326,6 +1341,9 @@ class HomeBriefCard extends HTMLElement {
         margin-top: 18px;
         padding-top: 14px;
         border-top: 1px solid color-mix(in srgb, var(--divider-color) 34%, transparent);
+      }
+      .brief-sections-fallback {
+        gap: 0;
       }
       .brief-section {
         display: grid;
