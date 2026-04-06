@@ -1360,6 +1360,7 @@ class HomeBriefCard extends HTMLElement {
         grid-template-columns: 24px 1fr;
         gap: 10px;
         align-items: center;
+        margin-bottom: 2px;
       }
       .brief-section-badge {
         width: 24px;
@@ -1374,9 +1375,9 @@ class HomeBriefCard extends HTMLElement {
         box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 14%, transparent);
       }
       .brief-section-title {
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 800;
-        letter-spacing: -0.01em;
+        letter-spacing: 0.06em;
         text-transform: uppercase;
         color: var(--secondary-text-color);
       }
@@ -1384,11 +1385,15 @@ class HomeBriefCard extends HTMLElement {
         display: grid;
         gap: 10px;
         padding-left: 34px;
+        border-left: 1px solid color-mix(in srgb, var(--divider-color) 28%, transparent);
+        margin-left: 11px;
+        padding-bottom: 2px;
+        padding-left: 22px;
       }
       .brief-section-copy {
         font-size: 13px;
-        line-height: 1.65;
-        color: var(--primary-text-color);
+        line-height: 1.68;
+        color: color-mix(in srgb, var(--primary-text-color) 92%, var(--secondary-text-color));
         max-width: 58ch;
       }
       .brief-section-copy-bullets {
