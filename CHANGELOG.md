@@ -8,6 +8,11 @@ All notable changes to this project will be documented in this file.
 - This gives the imported brief actual editorial weight in the UI while still keeping the card compact enough to scan.
 - Product fix: the imported brief now reads more like a real briefing surface and less like a hidden payload with one visible line.
 
+## 0.6.27
+
+- Refined the inside of Morning Brief section panels with looser body spacing, softer guide rules, and calmer body/bullet text tone so the imported briefing content reads more comfortably.
+- This is a tiny interior-readability slice, not a layout rewrite.
+
 ## 0.6.26
 
 - Gave numbered Morning Brief sections a lighter panel treatment so each imported briefing section feels more self-contained without turning the whole card into a stack of heavy boxes.

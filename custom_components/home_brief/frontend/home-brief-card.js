@@ -1381,16 +1381,16 @@ class HomeBriefCard extends HTMLElement {
       }
       .brief-section-body {
         display: grid;
-        gap: 10px;
-        border-left: 1px solid color-mix(in srgb, var(--divider-color) 24%, transparent);
+        gap: 12px;
+        border-left: 1px solid color-mix(in srgb, var(--divider-color) 20%, transparent);
         margin-left: 11px;
         padding-bottom: 2px;
         padding-left: 22px;
       }
       .brief-section-copy {
         font-size: 13px;
-        line-height: 1.68;
-        color: color-mix(in srgb, var(--primary-text-color) 92%, var(--secondary-text-color));
+        line-height: 1.7;
+        color: color-mix(in srgb, var(--primary-text-color) 88%, var(--secondary-text-color));
         max-width: 58ch;
       }
       .brief-section-copy-bullets {
@@ -1400,7 +1400,7 @@ class HomeBriefCard extends HTMLElement {
       .brief-bullet-row {
         display: grid;
         grid-template-columns: 8px 1fr;
-        gap: 10px;
+        gap: 12px;
         align-items: start;
       }
       .brief-bullet-dot {
@@ -1412,8 +1412,8 @@ class HomeBriefCard extends HTMLElement {
       }
       .brief-bullet-text {
         font-size: 13px;
-        line-height: 1.55;
-        color: var(--primary-text-color);
+        line-height: 1.6;
+        color: color-mix(in srgb, var(--primary-text-color) 90%, var(--secondary-text-color));
       }
       .morning-brief-package {
         display: grid;
