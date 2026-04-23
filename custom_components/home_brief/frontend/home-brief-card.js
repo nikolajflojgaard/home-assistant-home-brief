@@ -504,8 +504,9 @@ class HomeBriefCard extends HTMLElement {
     ].filter(Boolean);
 
     const meta = attrs.morning_brief_meta ? `<div class="morning-brief-meta">${this._escapeHtml(attrs.morning_brief_meta)}</div>` : '';
-    const summaryBlock = packageSummary && (!lines.length || packageSummary !== lines[0])
-      ? `<div class="morning-brief-summary">${this._escapeHtml(packageSummary)}</div>`
+    const summaryText = packageSummary && (!lines.length || packageSummary !== lines[0]) ? packageSummary : '';
+    const summaryBlock = summaryText
+      ? `<div class="morning-brief-summary">${this._escapeHtml(summaryText)}</div>`
       : '';
     const briefText = pkg && typeof pkg.brief_text === 'string' ? pkg.brief_text.trim() : '';
     const synopsisText = briefText
@@ -520,7 +521,8 @@ class HomeBriefCard extends HTMLElement {
     const synopsisBlock = synopsisText
       ? `<div class="morning-brief-synopsis">${this._escapeHtml(synopsisText)}</div>`
       : '';
-    const lead = this._escapeHtml(lines[0] || packageSummary);
+    const leadText = lines[0] || packageSummary;
+    const lead = this._escapeHtml(leadText);
     const rest = lines.slice(1);
     const packageRows = [
       pkg?.solar?.yesterday_kwh !== undefined && pkg?.solar?.yesterday_kwh !== null ? {
@@ -528,22 +530,27 @@ class HomeBriefCard extends HTMLElement {
         value: `Yesterday ${pkg.solar.yesterday_kwh} kWh`,
       } : null,
     ].filter(Boolean);
+    const introBlock = `
+      <div class="morning-brief-intro">
+        <div class="morning-brief-intro-copy">
+          <div class="morning-brief-eyebrow">Morning brief</div>
+          <div class="morning-brief-lead">${lead}</div>
+          ${summaryBlock}
+          ${synopsisBlock}
+          ${meta}
+        </div>
+        ${chips.length ? `
+          <div class="morning-brief-chips">
+            ${chips.map((chip) => `<span class="morning-brief-chip">${this._escapeHtml(chip)}</span>`).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
 
     return `
       <section class="morning-brief-panel">
         <div class="morning-brief-header">
-          <div>
-            <div class="morning-brief-eyebrow">Morning brief</div>
-            ${summaryBlock}
-            ${synopsisBlock}
-            <div class="morning-brief-lead">${lead}</div>
-            ${meta}
-          </div>
-          ${chips.length ? `
-            <div class="morning-brief-chips">
-              ${chips.map((chip) => `<span class="morning-brief-chip">${this._escapeHtml(chip)}</span>`).join('')}
-            </div>
-          ` : ''}
+          ${introBlock}
         </div>
         ${rest.length ? `
           <div class="morning-brief-list">
@@ -1278,40 +1285,45 @@ class HomeBriefCard extends HTMLElement {
         display: grid;
         gap: 16px;
       }
+      .morning-brief-intro {
+        display: grid;
+        gap: 14px;
+      }
+      .morning-brief-intro-copy {
+        display: grid;
+        gap: 8px;
+      }
       .morning-brief-eyebrow {
         font-size: 11px;
         text-transform: uppercase;
         letter-spacing: 0.1em;
         color: var(--secondary-text-color);
         font-weight: 700;
-        margin-bottom: 8px;
       }
       .morning-brief-summary {
-        margin-bottom: 6px;
         font-size: 12px;
         line-height: 1.45;
         text-transform: uppercase;
         letter-spacing: 0.06em;
         color: var(--secondary-text-color);
         font-weight: 700;
+        opacity: 0.95;
       }
       .morning-brief-synopsis {
-        margin-bottom: 14px;
         font-size: 13px;
         line-height: 1.62;
         color: var(--primary-text-color);
-        opacity: 0.9;
+        opacity: 0.88;
         max-width: 60ch;
       }
       .morning-brief-lead {
-        font-size: 20px;
-        line-height: 1.28;
-        font-weight: 720;
-        letter-spacing: -0.025em;
-        max-width: 34ch;
+        font-size: 22px;
+        line-height: 1.24;
+        font-weight: 760;
+        letter-spacing: -0.028em;
+        max-width: 30ch;
       }
       .morning-brief-meta {
-        margin-top: 10px;
         color: var(--secondary-text-color);
         font-size: 12px;
         line-height: 1.5;
