@@ -446,15 +446,59 @@ class HomeBriefCard extends HTMLElement {
     return `<div class="brief-section-copy">${this._escapeHtml(clipped)}</div>`;
   }
 
+  _renderTaskRows(items, emptyLabel = 'Nothing queued.') {
+    const rows = Array.isArray(items) ? items.filter(Boolean).slice(0, 3) : [];
+    if (!rows.length) {
+      return `<div class="brief-section-copy">${this._escapeHtml(emptyLabel)}</div>`;
+    }
+
+    return `
+      <div class="brief-section-copy brief-section-copy-bullets">
+        ${rows.map((item) => {
+          const title = String(item?.title || item?.name || item?.task || '').trim();
+          const due = String(item?.due || item?.date || '').trim();
+          const assignee = String(item?.assignee || item?.person || '').trim();
+          const bits = [due, assignee].filter(Boolean).join(' • ');
+          return `
+            <div class="brief-bullet-row">
+              <span class="brief-bullet-dot"></span>
+              <span class="brief-bullet-text">${this._escapeHtml(title || 'Task')}${bits ? ` <span class="brief-inline-meta">${this._escapeHtml(bits)}</span>` : ''}</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
   _briefSections(attrs) {
     const pkg = attrs.daily_brief_package && typeof attrs.daily_brief_package === 'object' ? attrs.daily_brief_package : null;
     const briefText = pkg && typeof pkg.brief_text === 'string' ? pkg.brief_text.trim() : '';
-    const sections = this._parseBriefSections(briefText)
+    const parsedSections = this._parseBriefSections(briefText)
       .map((section) => ({
         ...section,
         body: (Array.isArray(section.body) ? section.body : []).filter(Boolean),
       }))
-      .filter((section) => section.body.length);
+      .filter((section) => section.body.length)
+      .map((section) => ({
+        title: section.title,
+        bodyHtml: section.body.slice(0, 3).map((part) => this._renderBriefSectionPart(part)).join(''),
+      }));
+
+    const syntheticSections = [];
+    if (Array.isArray(pkg?.nikolaj_tasks) && pkg.nikolaj_tasks.length) {
+      syntheticSections.push({
+        title: 'Nikolaj’s Tasks',
+        bodyHtml: this._renderTaskRows(pkg.nikolaj_tasks, 'No Nikolaj tasks in the imported brief.'),
+      });
+    }
+    if (Array.isArray(pkg?.household_tasks) && pkg.household_tasks.length) {
+      syntheticSections.push({
+        title: 'Household Tasks',
+        bodyHtml: this._renderTaskRows(pkg.household_tasks, 'No household tasks in the imported brief.'),
+      });
+    }
+
+    const sections = [...parsedSections, ...syntheticSections];
 
     if (!sections.length) {
       const fallback = String(pkg?.summary || '').trim();
@@ -472,7 +516,7 @@ class HomeBriefCard extends HTMLElement {
               <div class="brief-section-title">${this._escapeHtml(section.title)}</div>
             </div>
             <div class="brief-section-body">
-              ${section.body.slice(0, 3).map((part) => this._renderBriefSectionPart(part)).join('')}
+              ${section.bodyHtml}
             </div>
           </div>
         `).join('')}
@@ -1431,6 +1475,10 @@ class HomeBriefCard extends HTMLElement {
         font-size: 13px;
         line-height: 1.6;
         color: color-mix(in srgb, var(--primary-text-color) 90%, var(--secondary-text-color));
+      }
+      .brief-inline-meta {
+        color: var(--secondary-text-color);
+        font-size: 12px;
       }
       .morning-brief-package {
         display: grid;
