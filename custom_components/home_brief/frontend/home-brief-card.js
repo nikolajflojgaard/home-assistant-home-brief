@@ -490,16 +490,20 @@ class HomeBriefCard extends HTMLElement {
         bodyHtml: section.body.slice(0, 3).map((part) => this._renderBriefSectionPart(part)).join(''),
       }));
 
+    const existingTitles = new Set(parsedSections.map((section) => String(section.title || '').trim().toLowerCase()));
+    const hasImportedTaskSection = existingTitles.has('nikolaj’s tasks') || existingTitles.has("nikolaj's tasks") || existingTitles.has('household chores') || existingTitles.has('household tasks');
+    const hasImportedWeatherSection = existingTitles.has('copenhagen weather') || existingTitles.has('weather / solar') || existingTitles.has('weather/solar') || existingTitles.has('solar');
+
     const syntheticSections = [];
-    if (Array.isArray(pkg?.nikolaj_tasks) && pkg.nikolaj_tasks.length) {
+    if (!hasImportedTaskSection && Array.isArray(pkg?.nikolaj_tasks) && pkg.nikolaj_tasks.length) {
       syntheticSections.push({
         title: 'Nikolaj’s Tasks',
         bodyHtml: this._renderTaskRows(pkg.nikolaj_tasks, 'No Nikolaj tasks in the imported brief.'),
       });
     }
-    if (Array.isArray(pkg?.household_tasks) && pkg.household_tasks.length) {
+    if (!hasImportedTaskSection && Array.isArray(pkg?.household_tasks) && pkg.household_tasks.length) {
       syntheticSections.push({
-        title: 'Household Tasks',
+        title: 'Household Chores',
         bodyHtml: this._renderTaskRows(pkg.household_tasks, 'No household tasks in the imported brief.'),
       });
     }
@@ -508,26 +512,34 @@ class HomeBriefCard extends HTMLElement {
 
     if (!sections.length) {
       const fallback = String(pkg?.summary || '').trim();
-      return fallback
-        ? `<div class="brief-sections brief-sections-fallback"><div class="brief-section-copy">${this._escapeHtml(fallback)}</div></div>`
-        : '';
+      return {
+        html: fallback
+          ? `<div class="brief-sections brief-sections-fallback"><div class="brief-section-copy">${this._escapeHtml(fallback)}</div></div>`
+          : '',
+        hasImportedWeatherSection,
+        hasImportedTaskSection,
+      };
     }
 
-    return `
-      <div class="brief-sections">
-        ${sections.map((section, index) => `
-          <div class="brief-section">
-            <div class="brief-section-head">
-              <div class="brief-section-badge">${index + 1}</div>
-              <div class="brief-section-title">${this._escapeHtml(section.title)}</div>
+    return {
+      html: `
+        <div class="brief-sections">
+          ${sections.map((section, index) => `
+            <div class="brief-section ${index < 2 ? 'brief-section-priority' : ''}">
+              <div class="brief-section-head">
+                <div class="brief-section-badge">${index + 1}</div>
+                <div class="brief-section-title">${this._escapeHtml(section.title)}</div>
+              </div>
+              <div class="brief-section-body">
+                ${section.bodyHtml}
+              </div>
             </div>
-            <div class="brief-section-body">
-              ${section.bodyHtml}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `;
+          `).join('')}
+        </div>
+      `,
+      hasImportedWeatherSection,
+      hasImportedTaskSection,
+    };
   }
 
   _morningBriefPanel(attrs) {
@@ -582,16 +594,19 @@ class HomeBriefCard extends HTMLElement {
       pkg?.solar?.yesterday_kwh !== undefined && pkg?.solar?.yesterday_kwh !== null ? `Yesterday ${pkg.solar.yesterday_kwh} kWh` : null,
       pkg?.solar?.today_kwh !== undefined && pkg?.solar?.today_kwh !== null ? `Today ${pkg.solar.today_kwh} kWh` : null,
     ].filter(Boolean).join(' • ');
-    const packageRows = [
-      weatherSummary ? {
-        title: 'Weather',
-        value: weatherSummary,
-      } : null,
-      solarSummary ? {
-        title: 'Solar',
-        value: solarSummary,
-      } : null,
-    ].filter(Boolean);
+    const briefSections = this._briefSections(attrs);
+    const packageRows = briefSections.hasImportedWeatherSection
+      ? []
+      : [
+          weatherSummary ? {
+            title: 'Weather',
+            value: weatherSummary,
+          } : null,
+          solarSummary ? {
+            title: 'Solar',
+            value: solarSummary,
+          } : null,
+        ].filter(Boolean);
     const introBlock = `
       <div class="morning-brief-intro">
         <div class="morning-brief-intro-copy">
@@ -624,7 +639,7 @@ class HomeBriefCard extends HTMLElement {
             `).join('')}
           </div>
         ` : ''}
-        ${this._briefSections(attrs)}
+        ${briefSections.html}
         ${packageRows.length ? `
           <div class="morning-brief-package">
             ${packageRows.map((row) => `
@@ -1433,6 +1448,10 @@ class HomeBriefCard extends HTMLElement {
         background: color-mix(in srgb, var(--card-background-color) 84%, transparent);
         border: 1px solid color-mix(in srgb, var(--divider-color) 24%, transparent);
       }
+      .brief-section-priority {
+        background: color-mix(in srgb, var(--primary-color) 4%, var(--card-background-color));
+        border-color: color-mix(in srgb, var(--primary-color) 16%, transparent);
+      }
       .brief-section-head {
         display: grid;
         grid-template-columns: 24px 1fr;
@@ -1453,9 +1472,9 @@ class HomeBriefCard extends HTMLElement {
         box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 14%, transparent);
       }
       .brief-section-title {
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 800;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--secondary-text-color);
       }
@@ -1469,9 +1488,9 @@ class HomeBriefCard extends HTMLElement {
       }
       .brief-section-copy {
         font-size: 13px;
-        line-height: 1.7;
-        color: color-mix(in srgb, var(--primary-text-color) 88%, var(--secondary-text-color));
-        max-width: 58ch;
+        line-height: 1.72;
+        color: color-mix(in srgb, var(--primary-text-color) 90%, var(--secondary-text-color));
+        max-width: 62ch;
       }
       .brief-section-copy-bullets {
         display: grid;
@@ -1491,8 +1510,8 @@ class HomeBriefCard extends HTMLElement {
         background: color-mix(in srgb, var(--primary-color) 78%, white 22%);
       }
       .brief-bullet-text {
-        font-size: 14px;
-        line-height: 1.62;
+        font-size: 13px;
+        line-height: 1.58;
         color: color-mix(in srgb, var(--primary-text-color) 92%, var(--secondary-text-color));
       }
       .brief-inline-meta {

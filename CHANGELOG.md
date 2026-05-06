@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.35
+
+- Deduped the imported full-brief surface so Home Brief stops echoing `Nikolaj’s Tasks`, `Household Chores`, and Weather/Solar helper rows when those sections already exist in the published brief package.
+- Tightened the morning brief hierarchy so the imported editorial sections read like the primary narrative surface instead of a long receipt mixed with local helper widgets.
+
 ## 0.6.34
 
 - Fixed imported full-brief section rendering so blocks like `Global`, `Denmark / EU`, `Markets`, and `Tech / AI` render as real card sections instead of collapsing into the synopsis paragraph.
