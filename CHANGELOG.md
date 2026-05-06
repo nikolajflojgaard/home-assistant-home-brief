@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.33
+
+- Polished the imported daily brief presentation so the persisted package reads more intentionally in the card: larger task/body text, calmer micro-meta, better section spacing, and a proper Weather + Solar data block instead of a weak footer line.
+- This is a UI/hierarchy release now that the daily brief pipeline and section parsing are working.
+
 ## 0.6.32
 
 - Fixed imported daily brief section parsing in the Home Brief card so the persisted package can render the actual sections produced by the runtime, including `Nikolaj’s Tasks`, `Household Chores`, and `Weather / Solar`, instead of only recognizing the older market-style headings.
