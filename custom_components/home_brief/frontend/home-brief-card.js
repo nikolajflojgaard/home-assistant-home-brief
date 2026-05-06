@@ -521,20 +521,43 @@ class HomeBriefCard extends HTMLElement {
       };
     }
 
+    const editorialTitles = new Set(['global', 'denmark / eu', 'markets', 'tech / ai', 'today to watch', 'copenhagen weather']);
+    const editorialSections = sections.filter((section) => editorialTitles.has(String(section.title || '').trim().toLowerCase()));
+    const operationalSections = sections.filter((section) => !editorialTitles.has(String(section.title || '').trim().toLowerCase()));
+
     return {
       html: `
-        <div class="brief-sections">
-          ${sections.map((section, index) => `
-            <div class="brief-section ${index < 2 ? 'brief-section-priority' : ''}">
-              <div class="brief-section-head">
-                <div class="brief-section-badge">${index + 1}</div>
-                <div class="brief-section-title">${this._escapeHtml(section.title)}</div>
-              </div>
-              <div class="brief-section-body">
-                ${section.bodyHtml}
-              </div>
+        <div class="brief-sections-wrap">
+          ${editorialSections.length ? `
+            <div class="brief-sections brief-sections-editorial">
+              ${editorialSections.map((section, index) => `
+                <div class="brief-section ${index < 2 ? 'brief-section-priority' : ''}">
+                  <div class="brief-section-head">
+                    <div class="brief-section-badge">${index + 1}</div>
+                    <div class="brief-section-title">${this._escapeHtml(section.title)}</div>
+                  </div>
+                  <div class="brief-section-body">
+                    ${section.bodyHtml}
+                  </div>
+                </div>
+              `).join('')}
             </div>
-          `).join('')}
+          ` : ''}
+          ${operationalSections.length ? `
+            <div class="brief-sections brief-sections-operational">
+              ${operationalSections.map((section, index) => `
+                <div class="brief-section brief-section-operational">
+                  <div class="brief-section-head">
+                    <div class="brief-section-badge">${editorialSections.length + index + 1}</div>
+                    <div class="brief-section-title">${this._escapeHtml(section.title)}</div>
+                  </div>
+                  <div class="brief-section-body">
+                    ${section.bodyHtml}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
         </div>
       `,
       hasImportedWeatherSection,
@@ -1430,12 +1453,24 @@ class HomeBriefCard extends HTMLElement {
         padding-top: 14px;
         border-top: 1px solid color-mix(in srgb, var(--divider-color) 34%, transparent);
       }
+      .brief-sections-wrap {
+        display: grid;
+        gap: 18px;
+        margin-top: 18px;
+        padding-top: 16px;
+        border-top: 1px solid color-mix(in srgb, var(--divider-color) 34%, transparent);
+      }
       .brief-sections {
         display: grid;
         gap: 14px;
-        margin-top: 18px;
-        padding-top: 14px;
-        border-top: 1px solid color-mix(in srgb, var(--divider-color) 34%, transparent);
+      }
+      .brief-sections-editorial {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
+      }
+      .brief-sections-operational {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
       }
       .brief-sections-fallback {
         gap: 0;
@@ -1451,6 +1486,9 @@ class HomeBriefCard extends HTMLElement {
       .brief-section-priority {
         background: color-mix(in srgb, var(--primary-color) 4%, var(--card-background-color));
         border-color: color-mix(in srgb, var(--primary-color) 16%, transparent);
+      }
+      .brief-section-operational {
+        background: color-mix(in srgb, var(--secondary-background-color) 50%, transparent);
       }
       .brief-section-head {
         display: grid;
@@ -1636,6 +1674,12 @@ class HomeBriefCard extends HTMLElement {
         .brief-grid {
           grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
           align-items: start;
+        }
+      }
+      @media (max-width: 900px) {
+        .brief-sections-editorial,
+        .brief-sections-operational {
+          grid-template-columns: 1fr;
         }
       }
       @media (max-width: 760px) {

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.36
+
+- Remodeled the Morning Brief layout for iPad-style wider surfaces: editorial sections now render in a responsive two-column grid, while operational sections sit in a calmer secondary grid below.
+- This makes the imported brief read more like an intentional dashboard and less like one long receipt of stacked blocks.
+
 ## 0.6.35
 
 - Deduped the imported full-brief surface so Home Brief stops echoing `Nikolaj’s Tasks`, `Household Chores`, and Weather/Solar helper rows when those sections already exist in the published brief package.
