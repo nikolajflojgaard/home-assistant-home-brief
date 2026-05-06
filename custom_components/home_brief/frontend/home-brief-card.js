@@ -522,8 +522,10 @@ class HomeBriefCard extends HTMLElement {
     }
 
     const editorialTitles = new Set(['global', 'denmark / eu', 'markets', 'tech / ai', 'today to watch']);
-    const editorialSections = sections.filter((section) => editorialTitles.has(String(section.title || '').trim().toLowerCase()));
-    const operationalSections = sections.filter((section) => !editorialTitles.has(String(section.title || '').trim().toLowerCase()));
+    const hiddenTitles = new Set(['copenhagen weather', 'if i only do 3 things today', 'nikolaj’s tasks', "nikolaj's tasks", 'household chores', 'household tasks', 'solar', 'weather / solar', 'weather/solar']);
+    const visibleSections = sections.filter((section) => !hiddenTitles.has(String(section.title || '').trim().toLowerCase()));
+    const editorialSections = visibleSections.filter((section) => editorialTitles.has(String(section.title || '').trim().toLowerCase()));
+    const operationalSections = visibleSections.filter((section) => !editorialTitles.has(String(section.title || '').trim().toLowerCase()));
 
     return {
       html: `

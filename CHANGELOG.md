@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.38
+
+- Actually removed operational/support sections from the Morning Brief renderer instead of merely demoting them visually.
+- Hidden sections now include Copenhagen weather, top-3 actions, Nikolaj tasks, household chores, and solar so the brief surface stays editorial-only.
+
 ## 0.6.37
 
 - Tightened the Morning Brief editorial surface so it now consistently focuses on the intelligence sections only: `Global`, `Denmark / EU`, `Markets`, `Tech / AI`, and `Today to watch`.
