@@ -521,7 +521,7 @@ class HomeBriefCard extends HTMLElement {
       };
     }
 
-    const editorialTitles = new Set(['global', 'denmark / eu', 'markets', 'tech / ai', 'today to watch', 'copenhagen weather']);
+    const editorialTitles = new Set(['global', 'denmark / eu', 'markets', 'tech / ai', 'today to watch']);
     const editorialSections = sections.filter((section) => editorialTitles.has(String(section.title || '').trim().toLowerCase()));
     const operationalSections = sections.filter((section) => !editorialTitles.has(String(section.title || '').trim().toLowerCase()));
 

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.37
+
+- Tightened the Morning Brief editorial surface so it now consistently focuses on the intelligence sections only: `Global`, `Denmark / EU`, `Markets`, `Tech / AI`, and `Today to watch`.
+- Operational/support sections like Copenhagen weather, top-3 actions, Nikolaj tasks, household chores, and solar are now kept out of that editorial grid.
+
 ## 0.6.36
 
 - Remodeled the Morning Brief layout for iPad-style wider surfaces: editorial sections now render in a responsive two-column grid, while operational sections sit in a calmer secondary grid below.
