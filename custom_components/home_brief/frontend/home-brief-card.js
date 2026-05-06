@@ -394,6 +394,12 @@ class HomeBriefCard extends HTMLElement {
       'Today to watch',
       'Copenhagen weather',
       'If I only do 3 things today',
+      'Nikolaj’s Tasks',
+      'Nikolaj\'s Tasks',
+      'Household Chores',
+      'Household Tasks',
+      'Weather / Solar',
+      'Weather/Solar',
     ];
 
     const blocks = briefText

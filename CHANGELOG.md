@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.32
+
+- Fixed imported daily brief section parsing in the Home Brief card so the persisted package can render the actual sections produced by the runtime, including `Nikolaj’s Tasks`, `Household Chores`, and `Weather / Solar`, instead of only recognizing the older market-style headings.
+- This is the real product fix for "the daily brief is published but the card still does not show all of it". The issue was in frontend section recognition, not in the publish pipeline.
+
 ## 0.6.13
 
 - Added a compact visible synopsis excerpt from the imported `brief_text` so the Morning Brief card now shows more of the real daily brief package, not just a kicker line plus Top 3 bullets.
