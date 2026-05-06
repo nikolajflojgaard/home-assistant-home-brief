@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.34
+
+- Fixed imported full-brief section rendering so blocks like `Global`, `Denmark / EU`, `Markets`, and `Tech / AI` render as real card sections instead of collapsing into the synopsis paragraph.
+- The bug was in the frontend parser: it only handled headings when the title stood alone, but the published brief stores title + bullet body in the same block.
+
 ## 0.6.33
 
 - Polished the imported daily brief presentation so the persisted package reads more intentionally in the card: larger task/body text, calmer micro-meta, better section spacing, and a proper Weather + Solar data block instead of a weak footer line.

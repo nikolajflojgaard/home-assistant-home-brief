@@ -400,6 +400,7 @@ class HomeBriefCard extends HTMLElement {
       'Household Tasks',
       'Weather / Solar',
       'Weather/Solar',
+      'Solar',
     ];
 
     const blocks = briefText
@@ -408,21 +409,20 @@ class HomeBriefCard extends HTMLElement {
       .filter(Boolean);
 
     const sections = [];
-    let current = null;
 
     for (const block of blocks) {
       if (/^Daily brief/i.test(block)) continue;
-      const matched = names.find((name) => block === name);
-      if (matched) {
-        current = { title: matched, body: [] };
-        sections.push(current);
-        continue;
-      }
-      if (!current) continue;
-      current.body.push(block);
+      const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
+      if (!lines.length) continue;
+      const head = lines[0];
+      const matched = names.find((name) => head === name || head === `**${name}**`);
+      if (!matched) continue;
+      const body = lines.slice(1).join('\n').trim();
+      if (!body) continue;
+      sections.push({ title: matched, body: [body] });
     }
 
-    return sections.filter((section) => section.body.length);
+    return sections;
   }
 
   _renderBriefSectionPart(part) {
@@ -563,8 +563,8 @@ class HomeBriefCard extends HTMLElement {
       ? briefText
           .split(/\n\s*\n/)
           .map((part) => part.trim())
-          .filter((part) => part && !/^Daily brief/i.test(part) && !/^If I only do 3 things today/i.test(part) && !/^Nikolaj’s Tasks/i.test(part) && !/^Household Chores/i.test(part) && !/^Solar/i.test(part))
-          .slice(0, 2)
+          .filter((part) => part && !/^Daily brief/i.test(part) && !/^(Global|Denmark \/ EU|Markets|Tech \/ AI|Today to watch|Copenhagen weather|If I only do 3 things today|Nikolaj’s Tasks|Nikolaj's Tasks|Household Chores|Household Tasks|Weather \/ Solar|Weather\/Solar|Solar)(\n|$)/i.test(part))
+          .slice(0, 1)
           .join(' ')
           .replace(/\s+/g, ' ')
       : '';
