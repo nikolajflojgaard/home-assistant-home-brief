@@ -64,7 +64,7 @@
     },
     {
       "path": "code-docs.yml",
-      "size": 283,
+      "size": 326,
       "suffix": ".yml",
       "tags": []
     },
@@ -443,7 +443,7 @@
       ]
     }
   ],
-  "repo": "homeassistant-home-brief",
+  "repo": "home-assistant-home-brief",
   "root": ".",
   "routes": [],
   "tree": {

@@ -5,7 +5,7 @@
 ## Repository Snapshot
 
 - Service: `home-assistant-home-brief`
-- Repository: `homeassistant-home-brief`
+- Repository: `home-assistant-home-brief`
 - Owner: `Nikolaj Flojgaard`
 - Files inventoried: `64`
 - Manifests: `2`
